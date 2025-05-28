@@ -1,0 +1,78 @@
+{{- if eq .Values.clickhouse.mode "create" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+spec:
+  serviceName: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+  replicas: {{ .Values.clickhouse.create.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+    spec:
+      {{- include "zymtrace.dbNodeSelector" (list "clickhouse" $) | nindent 6 }}
+      {{- include "zymtrace.dbTolerations" (list "clickhouse" $) | nindent 6 }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+          image: "{{ include "database.imageRegistry" . }}{{ .Values.clickhouse.create.image.repository }}:{{ .Values.clickhouse.create.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          {{- include "zymtrace.resourceConfig" (list $ "clickhouse") | nindent 10 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.clickhouse.create.service.http.port }}
+            - name: native
+              containerPort: {{ .Values.clickhouse.create.service.native.port }}
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+          livenessProbe:
+            exec:
+              command:
+                - clickhouse-client
+                - --query
+                - SELECT 1
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - clickhouse-client
+                - --query
+                - SELECT 1
+            initialDelaySeconds: 50
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: data
+          {{- include "zymtrace.storage" (list $ "clickhouse") | nindent 10 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: http
+      port: {{ .Values.clickhouse.create.service.http.port }}
+      targetPort: http
+    - name: native
+      port: {{ .Values.clickhouse.create.service.native.port }}
+      targetPort: native
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
+{{- end }}

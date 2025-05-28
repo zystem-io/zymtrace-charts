@@ -1,0 +1,369 @@
+# Global Configuration
+global:
+  licenseKey: "" # Your zymtrace license key goes here 
+  namePrefix: "zymtrace"
+  imageRegistry: "docker.io" # Default registry
+  appImageRegistry: "ghcr.io/zystem-io"  # Specific registry for zymtrace backend services images, e.g docker.io/zystemio
+  registry:
+    requirePullSecret: false  # Control if image pull secrets should be used. If this is false, we default to the pub images.
+    username: "" # Required: provide via --set
+    password: "" # Required: provide via --set
+  imagePullPolicy: IfNotPresent
+  dataRetentionDays: 30  # Default retention period in days. 0 = forever.
+
+
+# This enables HTTP basic authentication for the UI, pending when full authN & authZ are implemented. 
+auth: 
+  basic: 
+    enabled: false   # Set to true to enable basic authentication
+    username: ""     # Required when enabled 
+    password: ""     # Required when enabled 
+
+globalSymbolization:
+  enabled: false
+  config:
+    bucketName: ""
+    accessKey: ""
+    secretKey: ""
+    region: ""
+    endpoint: ""
+
+# Database Configurations
+clickhouse:
+  mode: "create"  # "create" or "use_existing"
+  nodeSelector: {}
+  tolerations: []
+  # - key: "key"
+  #   operator: "Equal"
+  #   value: "value"
+  #   effect: "NoSchedule"
+  create:
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "25.3.2.39"
+    config:
+      user: "clickhouse"
+      password: "clickhouse123"
+      # This is a **prefix** prepended to all CH databases. The actual 
+      # atabases will then be called `myprefix_profiling`, for example.
+      database: "zymtrace"
+    service:
+      http:
+        port: 8123
+      native:
+        port: 9000
+    replicas: 1
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
+    storage:
+      type: "persistent"  # "persistent" or "empty_dir"
+      size: 30Gi
+      className: ""
+  use_existing:
+    host: ""  # host:nativePort
+    user: ""
+    password: ""
+    database: "zymtrace"
+    secure: false  # Enable TLS/secure connection
+
+postgres:
+  mode: "create"  # "create" or "use_existing"
+  nodeSelector: {}
+  tolerations: []
+  # - key: "key"
+  #   operator: "Equal"
+  #   value: "value"
+  #   effect: "NoSchedule"
+  create:
+    image:
+      repository: postgres
+      tag: "17.4"
+    config:
+      user: "postgres"
+      password: "postgres123"
+    service:
+      port: 5432
+    replicas: 1
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1024Gi"
+    storage:
+      type: "persistent"
+      size: 20Gi
+      className: ""
+  use_existing:
+    host: "" # host:port
+    user: ""
+    password: ""
+    secure: false  # Enable TLS/secure connection
+
+# Object Storage Configuration
+storage:
+  mode: "create"  # "create" or "use_existing"
+  nodeSelector: {}
+  tolerations: []
+  # - key: "key"
+  #   operator: "Equal"
+  #   value: "value"
+  #   effect: "NoSchedule"
+  create:
+    image:
+      repository: minio/minio
+      tag: "RELEASE.2024-12-18T13-15-44Z"
+    config:
+      user: "minio"
+      password: "minio123"
+    service:
+      api:
+        port: 9000
+      console:
+        port: 9001
+    replicas: 1
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    storage:
+      type: "persistent"
+      size: 20Gi
+      className: ""
+  use_existing:
+    type: "minio"  # "minio" or "s3"
+    minio:
+      endpoint: "" # must be a url, http/s
+      user: ""
+      password: ""
+    s3:
+      region: ""
+      accessKey: ""
+      secretKey: ""
+  buckets:
+    symbols: "zymtrace-symdb"
+
+# Application Services
+services:
+  common:
+    imageTag: ""
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+    tolerations: []
+    # Example tolerations:
+    # - key: "dedicated"
+    #   operator: "Equal"
+    #   value: "zymtrace"
+    #   effect: "NoSchedule"
+    # - key: "node.kubernetes.io/not-ready"
+    #   operator: "Exists"
+    #   effect: "NoExecute"
+    #   tolerationSeconds: 300
+    env: {}
+    hpa:
+      enabled: false  # Set to true to enable HPA for all services. Overide this common config in the service section below.
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 80
+      targetMemoryUtilizationPercentage: 80  
+      # behavior:
+      #   scaleDown:
+      #     stabilizationWindowSeconds: 100
+      #     policies:
+      #     - type: Percent
+      #       value: 100
+      #       periodSeconds: 15
+
+  ingest:
+    image:
+      repository: zymtrace-backend
+      tag: "" # Optional: overrides Chart.AppVersion if set, applied to all service tags  below.
+    port: 8375
+    replicas: 1
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "512Mi"
+      limits:
+        cpu: "4000m"
+        memory: "2Gi"
+
+  web:
+    image:
+      repository: zymtrace-backend
+      tag: ""
+    port: 9933
+    replicas: 1
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "4000m"
+        memory: "4Gi"
+
+  symdb:
+    image:
+      repository: zymtrace-backend
+      tag: ""
+    port: 6107
+    replicas: 1
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    env:
+      #SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
+
+  ui:
+    image:
+      repository: zymtrace-ui
+      tag: ""
+    port: 80
+    replicas: 1
+    # Service type configuration: ClusterIP, NodePort, or LoadBalancer
+    service:
+      type: ClusterIP
+      # Used for NodePort service type
+      nodePort: ""
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+  identity:
+    image:
+      repository: zymtrace-backend
+      tag: ""
+    port: 7829
+    replicas: 1
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+        
+  #HPA setting doesn't apply to the migration service. 
+  migrate:
+    image:
+      repository: zymtrace-backend
+      tag: ""
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+# Configuration for exposing the UI through ingress
+# NOTE: When ingress is enabled, service type for UI should be ClusterIP.
+# For direct external access without ingress, you can set service type to LoadBalancer or NodePort
+# in the respective service configurations.
+ingress:
+ # Set to true if you want to expose services through an existing ingress controller
+ enabled: false
+
+ className: "nginx" # e.g nginx, traefik, alb
+
+ # Common annotations
+ # nginx.ingress.kubernetes.io/ssl-redirect: "true"        # Force HTTPS for all traffic
+ # This is also a good place to specify TLS setup. e.g:
+ # For cert-manager (Let's Encrypt):
+ # annotations:
+ #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+ # For cloud certificates:
+ # annotations:
+ #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:region:account:certificate/id"
+ #
+ # For HTTP/2 and gRPC support (different for each ingress controller):
+ # Nginx:
+ #   nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+ #   nginx.ingress.kubernetes.io/http2-enable: "true"
+ # 
+ # Traefik:
+ #   traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+ #   traefik.ingress.kubernetes.io/router.tls: "true"
+ #   traefik.ingress.kubernetes.io/service.serversscheme: "h2c"
+ # 
+ # AWS ALB:
+ #   alb.ingress.kubernetes.io/backend-protocol-version: "GRPC"
+ #   alb.ingress.kubernetes.io/target-type: "ip"
+ annotations: {}
+
+ hosts:
+   ui:
+     enabled: true
+     host: "" # e.g zymtrace.company.com
+     paths:
+       - path: /
+         pathType: Prefix
+     annotations: {}
+       # You must set this limit for your ingress type otherwise, you may not be able to upload custom symbols.
+       # For NGINX:
+       # nginx.ingress.kubernetes.io/proxy-body-size: "0" # or 10GB
+       #
+       # For Traefik:
+       # traefik.ingress.kubernetes.io/buffer-size: "0"  # or 10GB
+       #
+       # For AWS ALB:
+       # alb.ingress.kubernetes.io/max-request-body-size: "0"  # 10737418240
+
+ # TLS config example:
+ # tls:
+ # - secretName: zymtrace-ui-tls
+ #   hosts:
+ #     - zymtrace.company.com
+ tls: []

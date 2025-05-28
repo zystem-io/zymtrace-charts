@@ -1,0 +1,23 @@
+{{- range $name, $component := (pick .Values "clickhouse" "postgres" "storage") }}
+{{- if and (eq $component.mode "create") 
+           (eq $component.create.storage.type "persistent") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ (ternary "minio" $name (eq $name "storage"))) }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" $ | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ (ternary "minio" $name (eq $name "storage"))) }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if $component.create.storage.className }}
+  storageClassName: {{ $component.create.storage.className }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $component.create.storage.size }}
+---
+{{- end }}
+{{- end }}

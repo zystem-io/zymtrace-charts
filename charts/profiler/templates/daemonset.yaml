@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "zymtrace.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "zymtrace.selectorLabels" . | nindent 8 }}
+      annotations:
+        rollme: {{ randAlphaNum 5 }}
+    spec:
+      {{- if .Values.rbac.create }}
+      serviceAccountName: {{ include "zymtrace.resourceName" (list . "profiler") }}
+      {{- end }}
+      hostPID: true
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: profiler
+          image: {{ include "zymtrace.imageRegistry" . }}/{{ .Values.profiler.image.repository }}:{{ include "zymtrace.profilerTag" . }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          securityContext:
+            privileged: true
+            {{- with .Values.profiler.securityContext.capabilities }}
+            capabilities:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+          env:
+            {{- include "zymtrace.profiler.env" .Values.profiler | nindent 12 }}
+          args:
+            {{- include "zymtrace.profiler.args" .Values.profiler.args | nindent 12 }}
+          volumeMounts:
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+            - name: sys-kernel-debug
+              mountPath: /sys/kernel/debug
+              readOnly: true
+            {{- if .Values.profiler.cudaProfiler.enabled }}
+            # Mount the target directory for CUDA profiler
+            - name: zymtrace-cuda-profiler
+              mountPath: "/opt/zymtrace-cuda-profiler"
+            {{- end }}
+          resources:
+            {{- toYaml .Values.profiler.resources | nindent 12 }}
+      volumes:
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+            type: File
+        - name: sys-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+            type: Directory
+        {{- if .Values.profiler.cudaProfiler.enabled }}
+        # CUDA profiler target volume (host directory)
+        - name: zymtrace-cuda-profiler
+          hostPath:
+            path: {{ .Values.profiler.cudaProfiler.hostMountPath }}
+            type: DirectoryOrCreate
+        {{- end }}
+      nodeSelector:
+        kubernetes.io/os: linux # Base Linux selector
+        {{- with .Values.profiler.nodeSelector }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.profiler.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.profiler.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

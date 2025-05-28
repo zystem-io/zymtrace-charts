@@ -1,0 +1,29 @@
+===================================== 
+Thank you for installing zymtrace {{ .Chart.Name }} version {{ .Chart.Version }}
+===================================== 
+
+Release Name: {{ .Release.Name }}
+Namespace:   {{ .Release.Namespace }}
+
+🔍 Verify the deployment:
+
+1. Check profiler pod status (should be one per node):
+    $ kubectl get pods -n {{ .Release.Namespace }} -o wide | grep profiler
+
+2. Verify agent configuration:
+    $ kubectl describe daemonset -n {{ .Release.Namespace }} zymtrace-profiler  
+
+3. Monitor agent logs:
+    $ kubectl logs -f -n {{ .Release.Namespace }} -l app=zymtrace,component=profiler  
+
+📊 Agent Status:
+Collection endpoint: {{ range .Values.profiler.args }}{{ if contains "collection-agent" . }}{{ . }}{{ end }}{{ end }}
+{{- if .Values.profiler.nodeSelector }}
+Node Selection:
+{{- range $key, $value := .Values.profiler.nodeSelector }}
+    {{ $key }}: {{ $value }}
+{{- end }}
+{{- end }}
+
+🆘 Need help? Contact us:
+- Support: support@zymtrace.com

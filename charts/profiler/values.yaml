@@ -1,0 +1,102 @@
+global:
+  namePrefix: "zymtrace"
+  imageRegistry: "ghcr.io/zystem-io"
+  registry:
+    requirePullSecret: false
+    username: "" # Required: provide via --set
+    password: "" # Required: provide via --set
+  imagePullSecrets:
+    - name: null # Will be overridden by the template --> zymtrace-registry-cred
+  imagePullPolicy: IfNotPresent
+
+rbac:
+  create: true
+  skipExisting: true # Set to false to force create Service Account regardless of whether it exists
+  rules:
+    - apiGroups: [""]
+      resources: ["nodes", "pods"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "daemonsets"]
+      verbs: ["get", "list", "watch"]
+
+serviceAccount:
+  annotations:
+    {}
+    #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/operations/monitoring/zymtrace-profiler-role
+
+profiler:
+  image:
+    repository: zymtrace-pub-profiler
+    tag: ""
+  securityContext:
+    capabilities:
+      add:
+        - SYS_ADMIN # CAP_SYS_ADMIN is required
+  cudaProfiler:
+    enabled: false # Set to true to enable CUDA profiler
+    hostMountPath: "/var/lib/zymtrace/profiler" #can't use the standard /opt/zymtrace/profiler path because GKE mounts /opt as readonly for secuirty reasons. 
+  args:
+    # For all available arguments, see: https://docs.zymtrace.com/profiler-cli-args
+    
+    - "-collection-agent=zymtrace-ui.zymtrace.svc.cluster.local:80"
+    - "-disable-tls"
+    
+    # - "-tags=cloud_region:us-central1;env:staging"  
+    # - "-v"
+    # - "-dwarf"
+  # Note: CLI args take precedence over environment variables
+  env:
+    # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
+    
+    #ZYMTRACE_COLLECTION_AGENT: "zymtrace-ui.zymtrace.svc.cluster.local:80" 
+    #ZYMTRACE_DISABLE_TLS: "false"
+    # ZYMTRACE_TAGS: "region:us-west;env:prod"
+    
+    # Proxy settings
+    #HTTPS_PROXY: "" #http://username:password@proxy:port
+    
+    # Kubernetes downward API field references
+    fieldRefs:
+      # Default node name variables (set to false to disable)
+      NODE_NAME: true # maps to spec.nodeName
+      KUBERNETES_NODE_NAME: true # maps to spec.nodeName
+      # POD_NAME: metadata.name
+      # POD_NAMESPACE: metadata.namespace
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  nodeSelector:
+    {}
+    # kubernetes.io/arch: amd64
+    # nvidia.com/gpu: "true"           # Any node with NVIDIA GPU
+    # nvidia.com/gpu.product: "A100"   # Specific GPU model
+    # nvidia.com/gpu.memory: "40GB"    # Specific GPU memory
+  tolerations:
+    # Allow deploying to GPU nodes.
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+  affinity:
+    {}
+    # nodeAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     nodeSelectorTerms:
+    #     - matchExpressions:
+    #       - key: nvidia.com/gpu
+    #         operator: In
+    #         values:
+    #         - "true"
+    #   preferredDuringSchedulingIgnoredDuringExecution:
+    #   - weight: 1
+    #     preference:
+    #       matchExpressions:
+    #       - key: gpu.memory
+    #         operator: Gt
+    #         values:
+    #         - "32Gi"

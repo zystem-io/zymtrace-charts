@@ -1,0 +1,54 @@
+{{- if and .Values.ingress.enabled .Values.ingress.hosts.ui.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "ui-ingress") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "4"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-failed"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "ui") }}"
+    "helm.sh/resource-policy": "keep"
+    {{- if eq .Values.ingress.className "nginx" }}
+    # Automatically add HTTP/2 and gRPC support for Nginx ingress
+    #nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/http2-enable: "true"
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.ingress.hosts.ui.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hosts.ui.host | quote }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.ui.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "zymtrace.resourceName" (list $ "ui") }}
+                port:
+                  number: {{ $.Values.services.ui.port }}
+          {{- end }}
+{{- end }}

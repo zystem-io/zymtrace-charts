@@ -1,0 +1,42 @@
+{{- if .Values.rbac.create }}
+{{- if or (not .Values.rbac.skipExisting) (not (lookup "v1" "ServiceAccount" .Release.Namespace (include "zymtrace.resourceName" (list . "profiler")))) }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+---
+{{- if not (lookup "rbac.authorization.k8s.io/v1" "ClusterRole" "" (include "zymtrace.resourceName" (list . "profiler"))) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.rbac.rules | nindent 2 }}
+{{- end }}
+---
+{{- if not (lookup "rbac.authorization.k8s.io/v1" "ClusterRoleBinding" "" (printf "%s-%s" (include "zymtrace.resourceName" (list . "profiler")) .Release.Namespace)) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}-{{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "zymtrace.resourceName" (list . "profiler") }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}

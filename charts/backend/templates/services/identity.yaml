@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "identity") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "identity") }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "migrate") }}"
+spec:
+  replicas: {{ .Values.services.identity.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "identity") }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "identity") }}
+    spec:
+      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
+      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "identity") }}
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "identity") }}:{{ include "zymtrace.serviceTag" (list $ "identity") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["zymtrace-identity"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.identity.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.services.identity.resources | nindent 12 }}
+            
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "identity") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.services.identity.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "identity") }}
+---
+{{- include "zymtrace.hpa" (list $ "identity" .Values.services.identity) }}

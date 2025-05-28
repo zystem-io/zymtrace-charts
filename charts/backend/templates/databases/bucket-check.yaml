@@ -1,0 +1,68 @@
+{{- if eq .Values.storage.mode "use_existing" }}
+{{- if not (or (eq .Values.storage.use_existing.type "minio") (eq .Values.storage.use_existing.type "s3")) }}
+{{- fail "Storage type must be either 'minio' or 's3'" }}
+{{- end }}
+{{- if eq .Values.storage.use_existing.type "minio" }}
+{{- include "zymtrace.validateEndpoint" (list .Values.storage.use_existing.minio.endpoint) }}
+{{- else if and (eq .Values.storage.use_existing.type "s3") .Values.storage.use_existing.s3.endpoint }}
+{{- include "zymtrace.validateEndpoint" (list .Values.storage.use_existing.s3.endpoint) }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "bucket-check") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "bucket-check") }}
+  annotations:
+    "helm.sh/hook": "post-install,post-upgrade"
+    "helm.sh/hook-weight": "0" 
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation"
+spec:
+  ttlSecondsAfterFinished: 180
+  activeDeadlineSeconds: 180  # 3 minutes timeout
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "bucket-check") }}
+    spec:
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: bucket-check
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ .Values.services.migrate.image.repository }}:{{ include "zymtrace.serviceTag" (list . "migrate") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting bucket check"
+              
+              {{- if eq .Values.storage.use_existing.type "minio" }}
+              zymtrace-cli check-bucket \
+                --bucket-name {{ .Values.storage.buckets.symbols }} \
+                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY} \
+                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_KEY} \
+                --aws-endpoint ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}
+              {{- else }}
+              echo "Using S3 credentials"
+              zymtrace-cli check-bucket \
+                --bucket-name {{ .Values.storage.buckets.symbols }} \
+                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY} \
+                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_KEY} \
+                --aws-region ${SYMDB__SYMBOL_BUCKET__AWS_REGION} 
+              {{- end }}
+              
+              CHECK_STATUS=$?
+              
+              if [ $CHECK_STATUS -eq 0 ]; then
+                echo "Bucket check completed successfully"
+                exit 0
+              else
+                echo "Bucket check failed with status $CHECK_STATUS"
+                exit 1
+              fi
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+      restartPolicy: OnFailure
+{{- end }}

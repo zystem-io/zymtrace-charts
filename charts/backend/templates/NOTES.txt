@@ -1,0 +1,65 @@
+    =====================================
+    Thank you for installing zymtrace {{ .Chart.Name }} version {{ .Chart.Version }}
+    =====================================
+
+    Release Name: {{ .Release.Name }}
+    Namespace:   {{ .Release.Namespace }}
+
+    🔍 Verify the deployment:
+
+    1. Check all resources:
+       $ kubectl get all -n {{ .Release.Namespace }}
+
+    2. Verify core services:
+       $ kubectl get pods -n {{ .Release.Namespace }} -l app={{ .Values.global.namePrefix }}
+       $ kubectl get svc -n {{ .Release.Namespace }} -l app={{ .Values.global.namePrefix }}
+
+    3. Check database health:
+       $ kubectl get pods -n {{ .Release.Namespace }} -l app=clickhouse
+       $ kubectl get pods -n {{ .Release.Namespace }} -l app=postgres
+
+    4. View application logs:
+       $ kubectl logs -f -n {{ .Release.Namespace }} -l app={{ include "zymtrace.resourceName" (list $ "web") }}
+       $ kubectl logs -f -n {{ .Release.Namespace }} -l app={{ include "zymtrace.resourceName" (list $ "ingest") }}
+
+    📊 Access the application:
+    
+    UI Service is available at:
+   
+       $ kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "zymtrace.resourceName" (list $ "ui") }} 8080:{{ .Values.services.ui.port }}
+    Then visit: http://localhost:8080
+
+     Alternatively, $kubectl get svc -n {{ .Release.Namespace }} - should display a NodePort, if enabled. 
+
+    🔧 Helm Commands:
+    
+    View release status:
+       $ helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+    
+    View all release details:
+       $ helm get all {{ .Release.Name }} -n {{ .Release.Namespace }}
+    
+    Upgrade the release:
+       $ helm upgrade {{ .Release.Name }} . -n {{ .Release.Namespace }}
+
+    ❗ Common Issues:
+
+    1. If pods are in ImagePullBackOff:
+       $ kubectl get pods -n {{ .Release.Namespace }}
+       $ kubectl describe pod <pod-name> -n {{ .Release.Namespace }}
+       Check registry credentials and connectivity
+
+    2. If services can't connect:
+       $ kubectl get endpoints -n {{ .Release.Namespace }}
+       Verify service discovery and network policies
+
+    3. For storage issues:
+       $ kubectl get pvc -n {{ .Release.Namespace }}
+       Check storage class and provisioner
+
+    📚 Documentation:
+    - Product Docs: https://docs.zymtrace.com
+
+    🆘 Need help? Contact us:
+    - Support: support@zymtrace.com
+    - Issues: https://github.com/zystem-io/deploy-zymtrace/issues

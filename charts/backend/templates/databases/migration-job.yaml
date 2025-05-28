@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "migrate") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "migrate") }}
+  annotations:
+    "helm.sh/hook": "post-install,post-upgrade"
+    {{- if or (eq .Values.clickhouse.mode "create") (eq .Values.postgres.mode "create") }}
+    "helm.sh/hook-weight": "1"  # After DB creation
+    {{- else }}
+    "helm.sh/hook-weight": "0"  # Run first in post-install phase
+    {{- end }}
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation"
+spec:
+  ttlSecondsAfterFinished: 100  # Clean up completed jobs after some time
+  activeDeadlineSeconds: 180  # 3 minutes timeout
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "migrate") }}
+    spec:
+      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
+      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      initContainers:
+        {{- if eq .Values.clickhouse.mode "create" }}
+        - name: wait-for-clickhouse
+          image: "{{ include "database.imageRegistry" . }}{{ .Values.clickhouse.create.image.repository }}:{{ .Values.clickhouse.create.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until clickhouse-client \
+                --host={{ include "zymtrace.resourceName" (list $ "clickhouse") }} \
+                --user=${CLICKHOUSE_USER} \
+                --password=${CLICKHOUSE_PASSWORD} \
+                --query="SELECT 1"; do
+                echo "Waiting for Clickhouse to be ready..."
+                sleep 5
+              done
+              echo "Clickhouse is ready."
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+        {{- end }}
+
+        {{- if eq .Values.postgres.mode "create" }}
+        - name: wait-for-postgres
+          image: "{{ include "database.imageRegistry" . }}{{ .Values.postgres.create.image.repository }}:{{ .Values.postgres.create.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until PGPASSWORD=${POSTGRES_PASSWORD} psql \
+                -h {{ include "zymtrace.resourceName" (list $ "postgres") }} \
+                -U ${POSTGRES_USER} \
+                -d postgres \
+                -c "SELECT 1"; do
+                echo "Waiting for Postgres to be ready..."
+                sleep 5
+              done
+              echo "Postgres is ready."
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+        {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "migrate") }}:{{ include "zymtrace.serviceTag" (list . "migrate") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting migrations at $(date)"
+              echo "Running migrations with configured endpoints..."
+              
+              # All configuration is pulled from the existing environment variables.
+              zymtrace-cli migrate
+
+              MIGRATE_STATUS=$?
+              
+              if [ $MIGRATE_STATUS -eq 0 ]; then
+                echo "Migrations completed successfully"
+                exit 0
+              else
+                echo "Migration failed with status $MIGRATE_STATUS"
+                echo "Waiting for 2 minutes to allow for troubleshooting..."
+                sleep 120
+                exit 1
+              fi
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+      restartPolicy: OnFailure

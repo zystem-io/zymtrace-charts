@@ -1,0 +1,74 @@
+{{- if eq .Values.postgres.mode "create" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+spec:
+  serviceName: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+  replicas: {{ .Values.postgres.create.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+    spec:
+      {{- include "zymtrace.dbNodeSelector" (list "postgres" $) | nindent 6 }}
+      {{- include "zymtrace.dbTolerations" (list "postgres" $) | nindent 6 }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+          image: "{{ include "database.imageRegistry" . }}{{ .Values.postgres.create.image.repository }}:{{ .Values.postgres.create.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          {{- include "zymtrace.resourceConfig" (list $ "postgres") | nindent 10 }}
+          ports:
+            - name: psql
+              containerPort: {{ .Values.postgres.create.service.port }}
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: data
+          {{- include "zymtrace.storage" (list $ "postgres") | nindent 10 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: psql
+      port: {{ .Values.postgres.create.service.port }}
+      targetPort: psql
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+{{- end }}

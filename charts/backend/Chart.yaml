@@ -1,0 +1,15 @@
+apiVersion: v2
+name: backend
+description: Deploy zymtrace's self-hosted services
+type: application
+version: 25.3.5
+appVersion: "latest"
+keywords:
+  - zymtrace
+  - profiler
+  - observability
+  - GPU
+  - CPU
+home: https://docs.zymtrace.com
+sources:
+  - https://github.com/zystem-io/deploy-zymtrace

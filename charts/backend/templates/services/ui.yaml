@@ -1,0 +1,79 @@
+{{- include "zymtrace.validateBasicAuth" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "ui") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "ui") }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "migrate") }}"
+spec:
+  replicas: {{ .Values.services.ui.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "ui") }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "ui") }}
+    spec:
+      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
+      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "ui") }}
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "ui") }}:{{ include "zymtrace.serviceTag" (list $ "ui") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.ui.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.services.ui.resources | nindent 12 }}
+            
+          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- if .Values.auth.basic.enabled }}
+          env:
+            - name: UI_USER
+              value: {{ .Values.auth.basic.username | quote }}
+            - name: UI_PASSWORD
+              value: {{ .Values.auth.basic.password | quote }}
+          {{- end }}
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: http
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   httpGet:
+        #     path: /ready
+        #     port: http
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "ui") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: {{ default "ClusterIP" .Values.services.ui.service.type }}
+  ports:
+    - port: {{ .Values.services.ui.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.services.ui.service.type "NodePort") .Values.services.ui.service.nodePort }}
+      nodePort: {{ .Values.services.ui.service.nodePort }}
+      {{- end }}
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "ui") }}
+---
+{{- include "zymtrace.hpa" (list $ "ui" .Values.services.ui) }}
