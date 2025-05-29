@@ -2,7 +2,7 @@ apiVersion: v2
 name: backend
 description: Deploy zymtrace's self-hosted services
 type: application
-version: 25.3.5
+version: 25.5.9
 appVersion: "latest"
 keywords:
   - zymtrace

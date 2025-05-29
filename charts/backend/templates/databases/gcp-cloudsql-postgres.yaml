@@ -1,0 +1,73 @@
+{{- if eq .Values.postgres.mode "gcp_cloudsql" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: psql
+      port: {{ .Values.postgres.gcp_cloudsql.proxy.port }}
+      targetPort: psql
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+  namespace: {{ .Release.Namespace }}
+  #annotations:
+  #  "helm.sh/hook": "pre-install,pre-upgrade"
+  #  "helm.sh/hook-weight": "-1"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+    spec:
+      {{- include "zymtrace.dbNodeSelector" (list "postgres" $) | nindent 6 }}
+      {{- include "zymtrace.dbTolerations" (list "postgres" $) | nindent 6 }}
+      serviceAccountName: {{ .Values.postgres.gcp_cloudsql.serviceAccount }}
+      containers:
+        - name: cloud-sql-proxy
+          image: {{ .Values.postgres.gcp_cloudsql.proxy.image.repository }}:{{ .Values.postgres.gcp_cloudsql.proxy.image.tag }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - "/cloud-sql-proxy"
+            - "--address=0.0.0.0"
+            - "--port={{ .Values.postgres.gcp_cloudsql.proxy.port }}"
+            {{- if .Values.postgres.gcp_cloudsql.workloadIdentity.enabled }} #TODO - Add support for key/secret later. 
+            - "--auto-iam-authn"
+            {{- end }}
+            - "{{ .Values.postgres.gcp_cloudsql.instance }}"
+          resources:
+            {{- toYaml .Values.postgres.gcp_cloudsql.proxy.resources | nindent 12 }}
+          ports:
+            - name: psql
+              containerPort: {{ .Values.postgres.gcp_cloudsql.proxy.port }}
+          # Health check
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.postgres.gcp_cloudsql.proxy.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.postgres.gcp_cloudsql.proxy.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+{{- end }}

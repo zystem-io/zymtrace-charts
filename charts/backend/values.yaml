@@ -68,11 +68,13 @@ clickhouse:
     host: ""  # host:nativePort
     user: ""
     password: ""
-    database: "zymtrace"
+    database: "zymtrace" # This is used as the DB prefix, so the actual databases will be `zymtrace_profiling` and `zymtrace_metrics `.
     secure: false  # Enable TLS/secure connection
+    autoCreateDBs: false  # When true, sets INGEST__CLICKHOUSE__AUTO_CREATE_DBS=true and INGEST__METRICS__CLICKHOUSE__AUTO_CREATE_DBS=true
+    # NOTE: For autoCreateDBs to work, the database user must have CREATE DATABASE permission
 
 postgres:
-  mode: "create"  # "create" or "use_existing"
+  mode: "create"  # "create", "use_existing", or "gcp_cloudsql"
   nodeSelector: {}
   tolerations: []
   # - key: "key"
@@ -104,7 +106,33 @@ postgres:
     host: "" # host:port
     user: ""
     password: ""
+    database: "zymtrace"  # This used as the DB prefix, so the actual databases will be `zymtrace_identity` and `zymtrace_symdb`.
     secure: false  # Enable TLS/secure connection
+    autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
+    # NOTE: For autoCreateDBs to work, the database user must have CREATEDB permission. 
+    # Grant with: ALTER USER "your-user" CREATEDB;
+  gcp_cloudsql:
+    instance: "" # PROJECT:REGION:INSTANCE zymtrace-cloudsql-psql-1
+    user: "" # IAM account, e.g zt-db-762@local-bebop-448118-g4.iam. Ensure that gserviceaccount.com isn't added 
+    database: "zymtrace" #this is the db prefix for zymtrace_identity and zymtrace_symdb databases. 
+    autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
+    # NOTE: For autoCreateDBs to work, the IAM database user must have CREATEDB permission.
+    # Grant with: ALTER USER "zt-db-762@local-bebop-448118-g4.iam" CREATEDB;
+    workloadIdentity:
+      enabled: true  # Enable Workload Identity for authentication
+    proxy:
+      image:
+        repository: gcr.io/cloud-sql-connectors/cloud-sql-proxy
+        tag: "2.15.0"
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "556Mi"
+      port: 5432
+    serviceAccount: "zymtrace-cloudsql-sa" # Kubernetes service account bound to GCP service account via Workload Identity
 
 # Object Storage Configuration
 storage:
@@ -140,13 +168,17 @@ storage:
       size: 20Gi
       className: ""
   use_existing:
-    type: "minio"  # "minio" or "s3"
+    type: "minio"  # "minio", "s3", or "gcs"
     minio:
       endpoint: "" # must be a url, http/s
       user: ""
       password: ""
     s3:
       region: ""
+      accessKey: ""
+      secretKey: ""
+    gcs:
+      endpoint: "https://storage.googleapis.com" # GCS endpoint, defaults to https://storage.googleapis.com
       accessKey: ""
       secretKey: ""
   buckets:

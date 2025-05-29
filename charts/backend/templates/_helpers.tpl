@@ -204,12 +204,19 @@ Common environment variables handling with validation
 {{- end }}
 {{- end }}
 
-{{/* Validate mode is either create or use_existing */}}
+{{/* Validate mode for components */}}
 {{- define "zymtrace.validateMode" -}}
 {{- $component := index . 0 -}}
 {{- $mode := index . 1 -}}
+{{- if eq $component "postgres" -}}
+{{- if not (or (eq $mode "create") (eq $mode "use_existing") (eq $mode "gcp_cloudsql")) -}}
+{{- fail (printf "Invalid mode '%s' for component '%s'. Allowed values are 'create', 'use_existing', or 'gcp_cloudsql'" $mode $component) -}}
+{{- end -}}
+{{- else -}}
+# For other components, only allow 2 modes
 {{- if not (or (eq $mode "create") (eq $mode "use_existing")) -}}
 {{- fail (printf "Invalid mode '%s' for component '%s'. Allowed values are 'create' or 'use_existing'" $mode $component) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 

@@ -5,8 +5,6 @@ metadata:
   labels:
     {{- include "zymtrace.labels" . | nindent 4 }}
 spec:
-  updateStrategy:
-    type: RollingUpdate
   selector:
     matchLabels:
       {{- include "zymtrace.selectorLabels" . | nindent 6 }}
@@ -15,7 +13,7 @@ spec:
       labels:
         {{- include "zymtrace.selectorLabels" . | nindent 8 }}
       annotations:
-        rollme: {{ randAlphaNum 5 }}
+        rollme: {{ randAlphaNum 5 | quote }}
     spec:
       {{- if .Values.rbac.create }}
       serviceAccountName: {{ include "zymtrace.resourceName" (list . "profiler") }}
@@ -43,6 +41,7 @@ spec:
             - name: sys-kernel-debug
               mountPath: /sys/kernel/debug
               readOnly: true
+              readOnly: true
             {{- if .Values.profiler.cudaProfiler.enabled }}
             # Mount the target directory for CUDA profiler
             - name: zymtrace-cuda-profiler
@@ -59,6 +58,7 @@ spec:
           hostPath:
             path: /sys/kernel/debug
             type: Directory
+        
         {{- if .Values.profiler.cudaProfiler.enabled }}
         # CUDA profiler target volume (host directory)
         - name: zymtrace-cuda-profiler

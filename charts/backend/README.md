@@ -4,10 +4,11 @@ This Helm chart deploys zymtrace backend services to a Kubernetes cluster.
 
 ## Prerequisites
 
-- Kubernetes 1.20+
+- Kubernetes 1.19+
 - Helm 3.2.0+
 - A metrics server installed in your cluster for HPA support
 - PV provisioner support in the underlying infrastructure (for persistent storage)
+- For Google Cloud SQL with IAM: GKE cluster with Workload Identity configured
 
 ## Horizontal Pod Autoscaling (HPA)
 
@@ -124,67 +125,320 @@ Both sets of tolerations are necessary for initialization jobs (like zymtrace-mi
 | `clickhouse.tolerations` | Tolerations for Clickhouse database | `[]` |
 | `postgres.nodeSelector` | Node selector for PostgreSQL database | `{}` |
 | `postgres.tolerations` | Tolerations for PostgreSQL database | `[]` |
+| `postgres.use_existing.database` | Database name for existing PostgreSQL server | `postgres` |
+| `postgres.use_existing.autoCreateDBs` | Enable automatic database creation for existing PostgreSQL | `false` |
+| `postgres.gcp_cloudsql.instance` | Google Cloud SQL instance connection name (PROJECT:REGION:INSTANCE) | `""` |
+| `postgres.gcp_cloudsql.user` | Database user for Cloud SQL IAM authentication | `""` |
+| `postgres.gcp_cloudsql.database` | Database name in Cloud SQL | `postgres` |
+| `postgres.gcp_cloudsql.autoCreateDBs` | Enable automatic database creation for Cloud SQL | `false` |
+| `postgres.gcp_cloudsql.proxy.image.repository` | Cloud SQL Auth Proxy container image repository | `gcr.io/cloud-sql-connectors/cloud-sql-proxy` |
+| `postgres.gcp_cloudsql.proxy.image.tag` | Cloud SQL Auth Proxy container image tag | `2.11.0` |
+| `postgres.gcp_cloudsql.proxy.resources.requests.cpu` | CPU resource requests for Cloud SQL Auth Proxy | `100m` |
+| `postgres.gcp_cloudsql.proxy.resources.requests.memory` | Memory resource requests for Cloud SQL Auth Proxy | `128Mi` |
+| `postgres.gcp_cloudsql.proxy.resources.limits.cpu` | CPU resource limits for Cloud SQL Auth Proxy | `500m` |
+| `postgres.gcp_cloudsql.proxy.resources.limits.memory` | Memory resource limits for Cloud SQL Auth Proxy | `256Mi` |
+| `postgres.gcp_cloudsql.proxy.port` | Port for Cloud SQL Auth Proxy | `5432` |
+| `postgres.gcp_cloudsql.serviceAccount` | Kubernetes service account for Cloud SQL Auth Proxy | `""` |
 | `storage.nodeSelector` | Node selector for MinIO object storage | `{}` |
 | `storage.tolerations` | Tolerations for MinIO object storage | `[]` |
+| `storage.mode` | Storage mode: "create" or "use_existing" | `"create"` |
+| `storage.use_existing.type` | Storage type: "minio", "s3", or "gcs" | `"minio"` |
+| `storage.use_existing.minio.endpoint` | MinIO endpoint URL (must include http:// or https://) | `""` |
+| `storage.use_existing.minio.user` | MinIO access key | `""` |
+| `storage.use_existing.minio.password` | MinIO secret key | `""` |
+| `storage.use_existing.s3.region` | AWS S3 region | `""` |
+| `storage.use_existing.s3.accessKey` | AWS S3 access key | `""` |
+| `storage.use_existing.s3.secretKey` | AWS S3 secret key | `""` |
+| `storage.use_existing.s3.endpoint` | Custom S3 endpoint (optional) | `""` |
+| `storage.use_existing.s3.sessionToken` | AWS S3 session token (optional) | `""` |
+| `storage.use_existing.gcs.endpoint` | GCS S3-compatible endpoint | `"https://storage.googleapis.com"` |
+| `storage.use_existing.gcs.accessKey` | GCS HMAC access key | `""` |
+| `storage.use_existing.gcs.secretKey` | GCS HMAC secret key | `""` |
+| `storage.buckets.symbols` | Symbol storage bucket name | `"zymtrace-symdb"` |
 
-## Usage Examples
+## Google Cloud SQL with IAM Authentication
 
-### Enabling HPA
+This chart supports using Google Cloud SQL for PostgreSQL with IAM authentication via the Cloud SQL Auth Proxy.
 
-```bash
-# Install the chart with HPA enabled for the web service
-helm install backened zymtrace/backend --set services.web.hpa.enabled=true
+### Setting up IAM Authentication for Cloud SQL
 
-# Check the HPA status
-kubectl get hpa
+1. **Create a Google Cloud SQL PostgreSQL instance**
 
-# Test the autoscaling
-kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://zymtrace-web:9933; done"
+   ```bash
+   gcloud sql instances create zymtrace-pg \
+     --database-version=POSTGRES_14 \
+     --cpu=2 \
+     --memory=4GB \
+     --region=us-central1
+   ```
+
+2. **Create a database user with the Cloud SQL IAM Authentication enabled**
+
+   ```bash
+   gcloud sql users create postgres \
+     --instance=zymtrace-pg \
+     --type=cloud_iam_service_account
+   ```
+
+3. **Create a database (if needed)**
+
+   ```bash
+   gcloud sql databases create zymtrace --instance=zymtrace-pg
+   ```
+
+4. **Create a service account for the Cloud SQL Auth Proxy**
+
+   ```bash
+   gcloud iam service-accounts create zymtrace-cloudsql-sa \
+     --display-name="Service Account for zymtrace Cloud SQL"
+   ```
+
+5. **Grant the necessary IAM roles to the service account**
+
+   ```bash
+   # Get the project ID
+   PROJECT_ID=$(gcloud config get-value project)
+
+   # Grant the Cloud SQL Client role
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+     --member="serviceAccount:zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/cloudsql.client"
+
+   # Grant the IAM role to use the Cloud SQL instance
+   gcloud projects add-iam-policy-binding $PROJECT_ID \
+     --member="serviceAccount:zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/cloudsql.instanceUser"
+   ```
+
+6. **Create a Kubernetes service account and link it to the GCP service account using Workload Identity**
+
+   ```bash
+   # Create a Kubernetes service account
+   kubectl create serviceaccount zymtrace-cloudsql-sa -n your-namespace
+
+   # Annotate the Kubernetes service account to use with Workload Identity
+   kubectl annotate serviceaccount zymtrace-cloudsql-sa \
+     --namespace your-namespace \
+     iam.gke.io/gcp-service-account=zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com
+
+   # Allow the Kubernetes ServiceAccount to impersonate the GCP service account
+   gcloud iam service-accounts add-iam-policy-binding \
+     --role="roles/iam.workloadIdentityUser" \
+     --member="serviceAccount:$PROJECT_ID.svc.id.goog[your-namespace/zymtrace-cloudsql-sa]" \
+     zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+7. **Install the Helm chart with Google Cloud SQL configuration**
+
+   ```bash
+   helm install zymtrace ./charts/backend \
+     --set postgres.mode=gcp_cloudsql \
+     --set postgres.gcp_cloudsql.instance="$PROJECT_ID:us-central1:zymtrace-pg" \
+     --set postgres.gcp_cloudsql.user="postgres" \
+     --set postgres.gcp_cloudsql.database="zymtrace" \
+     --set postgres.gcp_cloudsql.serviceAccount="zymtrace-cloudsql-sa"
+   ```
+
+### Example values.yaml for Cloud SQL with IAM
+
+```yaml
+postgres:
+  mode: "gcp_cloudsql"
+  gcp_cloudsql:
+    instance: "my-project:us-central1:zymtrace-pg"  # PROJECT:REGION:INSTANCE
+    user: "postgres"
+    database: "zymtrace"
+    autoCreateDBs: true  # Enable automatic database creation
+    proxy:
+      serviceAccount: "zymtrace-cloudsql-sa"  # Kubernetes service account with Workload Identity
+      # Optional: customize resource limits
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"
 ```
 
-### Service Type Configuration
+## Object Storage Configuration
 
-```bash
-# Install with LoadBalancer service type for UI and Ingest
-helm install backened zymtrace/backend \
-  --set services.ui.service.type=LoadBalancer \
-  --set services.ingest.service.type=LoadBalancer
+This chart supports three types of object storage for storing symbol files:
 
-# Install with NodePort service type (specifying ports)
-helm install backened zymtrace/backend \
-  --set services.ui.service.type=NodePort \
-  --set services.ui.service.nodePort=30080 \
-  --set services.ingest.service.type=NodePort \
-  --set services.ingest.service.nodePort=30375
+1. **Create mode**: Deploys MinIO within the cluster
+2. **Use existing**: Connects to external storage services (MinIO, AWS S3, or Google Cloud Storage)
 
-# Note: When using Ingress for exposure, keep service type as ClusterIP (default)
+### Storage Types
+
+#### MinIO (Self-hosted)
+Use an existing MinIO instance:
+
+```yaml
+storage:
+  mode: "use_existing"
+  use_existing:
+    type: "minio"
+    minio:
+      endpoint: "https://minio.example.com"  # Must be a complete URL with http:// or https://
+      user: "your-access-key"
+      password: "your-secret-key"
 ```
 
-### Node Placement Configuration
+#### Amazon S3
+Use AWS S3 buckets:
 
-```bash
-# Install with tolerations for all services to run on dedicated nodes
-helm install backened zymtrace/backend \
-  --set services.common.tolerations[0].key=dedicated \
-  --set services.common.tolerations[0].operator=Equal \
-  --set services.common.tolerations[0].value=zymtrace \
-  --set services.common.tolerations[0].effect=NoSchedule
-
-# Install with specific node selector for databases
-helm install backened zymtrace/backend \
-  --set clickhouse.nodeSelector.disk-type=ssd \
-  --set postgres.nodeSelector.disk-type=ssd
-
-# Combine both nodeSelector and tolerations
-helm install backened zymtrace/backend \
-  --set services.common.nodeSelector.service-tier=application \
-  --set services.common.tolerations[0].key=service-tier \
-  --set services.common.tolerations[0].operator=Equal \
-  --set services.common.tolerations[0].value=application \
-  --set services.common.tolerations[0].effect=NoSchedule \
-  --set clickhouse.nodeSelector.service-tier=database \
-  --set clickhouse.tolerations[0].key=service-tier \
-  --set clickhouse.tolerations[0].operator=Equal \
-  --set clickhouse.tolerations[0].value=database \
-  --set clickhouse.tolerations[0].effect=NoSchedule
+```yaml
+storage:
+  mode: "use_existing"
+  use_existing:
+    type: "s3"
+    s3:
+      region: "us-west-2"
+      accessKey: ""
+      secretKey: ""
 ```
+
+#### Google Cloud Storage (GCS)
+Use Google Cloud Storage buckets via S3-compatible API:
+
+```yaml
+storage:
+  mode: "use_existing"
+  use_existing:
+    type: "gcs"
+    gcs:
+      endpoint: "https://storage.googleapis.com"  # Optional, defaults to this value
+      accessKey: "GOOGXXYY..."  # GCS access key (HMAC key)
+      secretKey: "your-gcs-secret-key"  # GCS secret key (HMAC key)
+```
+
+
+### Storage Validation
+
+The chart includes automatic validation and bucket connectivity checks:
+
+- **Endpoint validation**: Ensures all endpoints start with `http://` or `https://`
+- **Storage type validation**: Only accepts `"minio"`, `"s3"`, or `"gcs"` as valid types
+- **Bucket connectivity**: Post-installation jobs verify bucket access and permissions
+
+During deployment, you'll see debug output showing the storage configuration being used:
+
+```
+Storage Type: GCS (S3-compatible)
+Bucket Name: zymtrace-symbols
+Endpoint: https://storage.googleapis.com
+```
+
+## PostgreSQL Database Auto-Creation
+
+For PostgreSQL databases, you can enable automatic database creation in Cloud SQL or on existing servers.
+
+### Enabling Auto-Creation
+
+To enable automatic database creation:
+
+1. Set `postgres.use_existing.autoCreateDBs` to `true` in your values.yaml or via --set:
+   ```yaml
+   postgres:
+     use_existing:
+       autoCreateDBs: true
+   ```
+
+   Or via Helm command:
+   ```
+   helm upgrade zymtrace ./charts/backend --set postgres.use_existing.autoCreateDBs=true
+   ```
+
+2. Specify the desired database name(s) in `postgres.use_existing.database`:
+   ```yaml
+   postgres:
+     use_existing:
+       database: "zymtrace"
+   ```
+
+3. The specified database will be automatically created on the PostgreSQL server if it doesn't already exist.
+
+### Important Notes
+
+- Auto-creation is only supported for PostgreSQL databases, not for other database types.
+- The specified database name must be a valid PostgreSQL identifier.
+- Ensure the database user has sufficient privileges to create databases.
+
+### Example values.yaml for Auto-Creation
+
+```yaml
+postgres:
+  mode: "gcp_cloudsql"
+  gcp_cloudsql:
+    instance: "my-project:us-central1:zymtrace-pg"  # PROJECT:REGION:INSTANCE
+    user: "postgres"
+    database: "zymtrace"
+    autoCreateDBs: true  # Enable automatic database creation
+    proxy:
+      serviceAccount: "zymtrace-cloudsql-sa"  # Kubernetes service account with Workload Identity
+      # Optional: customize resource limits
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"
+```
+
+## Debugging Tips
+
+If you encounter issues during deployment or operation, consider the following debugging tips:
+
+- **Check pod logs** for error messages or stack traces:
+  ```
+  kubectl logs <pod-name>
+  ```
+
+- **Describe pods or services** to see detailed configuration and status:
+  ```
+  kubectl describe pod <pod-name>
+  kubectl describe service <service-name>
+  ```
+
+- **Check Helm release status** and history for potential issues:
+  ```
+  helm status zymtrace
+  helm history zymtrace
+  ```
+
+- **Review Kubernetes events** in the namespace for relevant warnings or errors:
+  ```
+  kubectl get events -n your-namespace
+  ```
+
+- **Check Cloud SQL instance** and database connectivity:
+  ```
+  # Connect to Cloud SQL instance
+  gcloud sql connect zymtrace-pg --user=postgres
+
+  # List databases
+  \l
+
+  # Check user privileges
+  \du
+  ```
+
+- **Inspect HPA configuration** and status:
+  ```
+  kubectl get hpa -n your-namespace
+  kubectl describe hpa <hpa-name> -n your-namespace
+  ```
+
+- **Review node placement** and scheduling:
+  ```
+  kubectl get pods -o wide
+  kubectl describe node <node-name>
+  ```
+
+- **Review resource usage** and limits:
+  ```
+  kubectl top pods -n your-namespace
+  kubectl top nodes
+  ```
+

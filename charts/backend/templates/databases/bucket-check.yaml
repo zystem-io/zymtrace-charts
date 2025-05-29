@@ -1,11 +1,13 @@
 {{- if eq .Values.storage.mode "use_existing" }}
-{{- if not (or (eq .Values.storage.use_existing.type "minio") (eq .Values.storage.use_existing.type "s3")) }}
-{{- fail "Storage type must be either 'minio' or 's3'" }}
+{{- if not (or (eq .Values.storage.use_existing.type "minio") (eq .Values.storage.use_existing.type "s3") (eq .Values.storage.use_existing.type "gcs")) }}
+{{- fail "Storage type must be either 'minio', 's3', or 'gcs'" }}
 {{- end }}
 {{- if eq .Values.storage.use_existing.type "minio" }}
 {{- include "zymtrace.validateEndpoint" (list .Values.storage.use_existing.minio.endpoint) }}
 {{- else if and (eq .Values.storage.use_existing.type "s3") .Values.storage.use_existing.s3.endpoint }}
 {{- include "zymtrace.validateEndpoint" (list .Values.storage.use_existing.s3.endpoint) }}
+{{- else if eq .Values.storage.use_existing.type "gcs" }}
+{{- include "zymtrace.validateEndpoint" (list (.Values.storage.use_existing.gcs.endpoint | default "https://storage.googleapis.com")) }}
 {{- end }}
 apiVersion: batch/v1
 kind: Job
@@ -22,7 +24,7 @@ metadata:
 spec:
   ttlSecondsAfterFinished: 180
   activeDeadlineSeconds: 180  # 3 minutes timeout
-  backoffLimit: 2
+  backoffLimit: 6
   template:
     metadata:
       labels:
@@ -31,7 +33,7 @@ spec:
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: bucket-check
-          image: "{{ include "zymtrace.imageRegistry" . }}{{ .Values.services.migrate.image.repository }}:{{ include "zymtrace.serviceTag" (list . "migrate") }}"
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "migrate") }}:{{ include "zymtrace.serviceTag" (list . "migrate") }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           command:
             - /bin/sh
@@ -40,17 +42,31 @@ spec:
               echo "Starting bucket check"
               
               {{- if eq .Values.storage.use_existing.type "minio" }}
+              echo "Storage Type: MinIO"
+              echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
+              echo "Endpoint: ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
               zymtrace-cli check-bucket \
                 --bucket-name {{ .Values.storage.buckets.symbols }} \
-                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY} \
-                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_KEY} \
+                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
+                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
+                --aws-endpoint ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}
+              {{- else if eq .Values.storage.use_existing.type "gcs" }}
+              echo "Storage Type: GCS"
+              echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
+              echo "Endpoint: ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
+              zymtrace-cli check-bucket \
+                --bucket-name {{ .Values.storage.buckets.symbols }} \
+                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
+                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
                 --aws-endpoint ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}
               {{- else }}
-              echo "Using S3 credentials"
+              echo "Storage Type: S3"
+              echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
+              echo "Region: ${SYMDB__SYMBOL_BUCKET__AWS_REGION}"
               zymtrace-cli check-bucket \
                 --bucket-name {{ .Values.storage.buckets.symbols }} \
-                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY} \
-                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_KEY} \
+                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
+                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
                 --aws-region ${SYMDB__SYMBOL_BUCKET__AWS_REGION} 
               {{- end }}
               

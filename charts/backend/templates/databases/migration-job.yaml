@@ -8,7 +8,7 @@ metadata:
     app: {{ include "zymtrace.resourceName" (list $ "migrate") }}
   annotations:
     "helm.sh/hook": "post-install,post-upgrade"
-    {{- if or (eq .Values.clickhouse.mode "create") (eq .Values.postgres.mode "create") }}
+    {{- if or (eq .Values.clickhouse.mode "create") (eq .Values.postgres.mode "create") (eq .Values.postgres.mode "gcp_cloudsql") }}
     "helm.sh/hook-weight": "1"  # After DB creation
     {{- else }}
     "helm.sh/hook-weight": "0"  # Run first in post-install phase

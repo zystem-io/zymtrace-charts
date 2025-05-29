@@ -1,6 +1,11 @@
 {{- include "zymtrace.validateMode" (list "clickhouse" .Values.clickhouse.mode) }}
 {{- include "zymtrace.validateMode" (list "postgres" .Values.postgres.mode) }}
 {{- include "zymtrace.validateMode" (list "storage" .Values.storage.mode) }}
+{{- if eq .Values.storage.mode "use_existing" }}
+{{- if not (or (eq .Values.storage.use_existing.type "minio") (eq .Values.storage.use_existing.type "s3") (eq .Values.storage.use_existing.type "gcs")) }}
+{{- fail "Storage type must be either 'minio', 's3', or 'gcs'" }}
+{{- end }}
+{{- end }}
 {{- if and .Values.globalSymbolization.enabled (not .Values.globalSymbolization.config.bucketName) }}
 {{- fail "When globalSymbolization is enabled, bucketName must be provided" }}
 {{- end }}
@@ -34,6 +39,11 @@ data:
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   INGEST__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
+  #metrics
+  INGEST__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
+  INGEST__METRICS__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
+  INGEST__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_metrics"
+
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   WEB__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
   WEB__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
@@ -42,6 +52,14 @@ data:
   INGEST__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
   INGEST__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_profiling"
+  INGEST__CLICKHOUSE__AUTO_CREATE_DBS: {{ .Values.clickhouse.use_existing.autoCreateDBs | default false | quote }}
+  #metrics
+  INGEST__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
+  INGEST__METRICS__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
+  INGEST__METRICS__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
+  INGEST__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_metrics"
+  INGEST__METRICS__CLICKHOUSE__AUTO_CREATE_DBS: {{ .Values.clickhouse.use_existing.autoCreateDBs | default false | quote }}
+
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   WEB__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
   WEB__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
@@ -54,13 +72,26 @@ data:
   SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.create.config.user | quote }}
   SYMDB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
   IDENTITY__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
-  {{- else }}
+  {{- else if eq .Values.postgres.mode "gcp_cloudsql" }}
+  IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
+  SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
+  SYMDB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
+  IDENTITY__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
+  IDENTITY__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_identity
+  SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_symdb
+  IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.gcp_cloudsql.autoCreateDBs | default false | quote }}
+  SYMDB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.gcp_cloudsql.autoCreateDBs | default false | quote }}
+  {{- else if eq .Values.postgres.mode "use_existing" }}
   IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.use_existing.user | quote }}
   IDENTITY__POSTGRES__ADDR: {{ .Values.postgres.use_existing.host | quote }}
-  IDENTITY__POSTGRES__SECURE: {{ .Values.postgres.use_existing.config.secure | quote }}
+  IDENTITY__POSTGRES__SECURE: {{ .Values.postgres.use_existing.secure | quote }}
+  IDENTITY__POSTGRES__DATABASE: {{ .Values.postgres.use_existing.database }}_identity
   SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.use_existing.user | quote }}
   SYMDB__POSTGRES__ADDR: {{ .Values.postgres.use_existing.host | quote }}
-  SYMDB__POSTGRES__SECURE: {{ .Values.postgres.use_existing.config.secure | quote }}
+  SYMDB__POSTGRES__SECURE: {{ .Values.postgres.use_existing.secure | quote }}
+  SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.use_existing.database }}_symdb
+  IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
+  SYMDB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
   {{- end }}
 
   # Service endpoints
@@ -81,6 +112,8 @@ data:
   SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT: {{ .Values.storage.use_existing.minio.endpoint | quote }}
   {{- else if eq .Values.storage.use_existing.type "s3" }}
   SYMDB__SYMBOL_BUCKET__AWS_REGION: {{ .Values.storage.use_existing.s3.region | quote }}
+  {{- else if eq .Values.storage.use_existing.type "gcs" }}
+  SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT: {{ .Values.storage.use_existing.gcs.endpoint | default "https://storage.googleapis.com" | quote }}
   {{- end }}
 
   # Global symbolization configuration
@@ -125,10 +158,17 @@ stringData:
   {{- if eq .Values.clickhouse.mode "create" }}
   CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
   INGEST__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
+  #metrics
+  INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
+
   WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
   {{- else }}
   CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
   INGEST__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
+
+  #metrics
+  INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
+
   WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
   {{- end }}
 
@@ -138,6 +178,10 @@ stringData:
   POSTGRES_PASSWORD: {{ .Values.postgres.create.config.password | quote }}
   IDENTITY__POSTGRES__PASSWORD: {{ .Values.postgres.create.config.password | quote }}
   SYMDB__POSTGRES__PASSWORD: {{ .Values.postgres.create.config.password | quote }}
+  {{- else if eq .Values.postgres.mode "gcp_cloudsql" }}
+  # For Cloud SQL with IAM authentication, no password is needed as we use the IAM proxy
+  IDENTITY__POSTGRES__PASSWORD: ""
+  SYMDB__POSTGRES__PASSWORD: ""
   {{- else }}
   POSTGRES_PASSWORD: {{ .Values.postgres.use_existing.password | quote }}
   IDENTITY__POSTGRES__PASSWORD: {{ .Values.postgres.use_existing.password | quote }}
@@ -158,6 +202,9 @@ stringData:
   {{- if .Values.storage.use_existing.s3.sessionToken }}
   SYMDB__SYMBOL_BUCKET__AWS_SESSION_TOKEN: {{ .Values.storage.use_existing.s3.sessionToken | quote }}
   {{- end }}
+  {{- else if eq .Values.storage.use_existing.type "gcs" }}
+  SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID: {{ .Values.storage.use_existing.gcs.accessKey | quote }}
+  SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY: {{ .Values.storage.use_existing.gcs.secretKey | quote }}
   {{- end }}
 
   # Global symbolization credentials
