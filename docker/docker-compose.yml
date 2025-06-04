@@ -164,7 +164,7 @@ services:
   #
   ui:
     <<: *x-common
-    image: ${UI_IMAGE:-ghcr.io/zystem-io/zymtrace-pub-ui:latest}
+    image: ${UI_IMAGE:-ghcr.io/zystem-io/zymtrace-pub-ui:25.6.0}
     ports: ["127.0.0.1:8080:80"]
     environment:
       WEB_SERVICE: "http://web:9933"
