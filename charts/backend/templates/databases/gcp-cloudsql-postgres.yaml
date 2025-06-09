@@ -53,6 +53,9 @@ spec:
             {{- if .Values.postgres.gcp_cloudsql.workloadIdentity.enabled }} #TODO - Add support for key/secret later. 
             - "--auto-iam-authn"
             {{- end }}
+            {{- if .Values.postgres.gcp_cloudsql.privateIP }}
+            - "--private-ip"
+            {{- end }}
             - "{{ .Values.postgres.gcp_cloudsql.instance }}"
           resources:
             {{- toYaml .Values.postgres.gcp_cloudsql.proxy.resources | nindent 12 }}

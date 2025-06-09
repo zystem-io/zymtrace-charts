@@ -9,6 +9,64 @@ This Helm chart deploys zymtrace backend services to a Kubernetes cluster.
 - A metrics server installed in your cluster for HPA support
 - PV provisioner support in the underlying infrastructure (for persistent storage)
 - For Google Cloud SQL with IAM: GKE cluster with Workload Identity configured
+- For NetworkPolicies: A CNI that supports NetworkPolicy enforcement (Calico, Cilium, Weave Net, etc.)
+
+## Network Security with NetworkPolicies
+
+This chart includes optional NetworkPolicy resources to secure database access within your cluster. NetworkPolicies restrict which pods can communicate with your PostgreSQL and ClickHouse databases.
+
+### How NetworkPolicies Work
+
+When enabled, the chart creates NetworkPolicies that:
+
+- **PostgreSQL**: Only allow access from `migrate`, `identity`, and `symdb` services
+- **ClickHouse**: Only allow access from `ingest` and `web` services
+- **Block all other traffic**: Any other pods in the cluster are denied access to the databases
+
+### CNI Compatibility
+
+NetworkPolicies require a Container Network Interface (CNI) that supports policy enforcement:
+
+### Enabling/Disabling NetworkPolicies
+
+NetworkPolicies are **enabled by default**. To disable them (e.g., for Flannel clusters):
+
+```yaml
+services:
+  activateNetworkPolicies: false
+```
+
+Or via Helm command:
+```bash
+helm install zymtrace ./charts/backend --set services.activateNetworkPolicies=false
+```
+
+### Important Notes
+
+- NetworkPolicies only apply when databases are deployed within the cluster (`create` mode for ClickHouse, `create` or `gcp_cloudsql` modes for PostgreSQL)
+- For `use_existing` database modes, no NetworkPolicies are created since databases are external
+- The chart automatically detects if NetworkPolicy API is available and skips creation if not supported
+- Standard Flannel users **must** set `activateNetworkPolicies: false` to avoid silent policy failures
+
+### Troubleshooting NetworkPolicies
+
+If you experience connectivity issues after enabling NetworkPolicies:
+
+1. **Check if your CNI supports NetworkPolicies**:
+   ```bash
+   kubectl get networkpolicies -n your-namespace
+   kubectl describe networkpolicy zymtrace-postgres-network-policy -n your-namespace
+   ```
+
+2. **Verify pod labels match policy selectors**:
+   ```bash
+   kubectl get pods --show-labels -n your-namespace
+   ```
+
+3. **Test connectivity** from allowed services:
+   ```bash
+   kubectl exec -it zymtrace-identity-xxx -- nc -zv zymtrace-postgres 5432
+   ```
 
 ## Horizontal Pod Autoscaling (HPA)
 
@@ -111,6 +169,7 @@ Both sets of tolerations are necessary for initialization jobs (like zymtrace-mi
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `services.activateNetworkPolicies` | Enable NetworkPolicy creation for database access control | `true` |
 | `services.<service>.hpa.enabled` | Enable HPA for the service | `false` |
 | `services.<service>.hpa.minReplicas` | Minimum number of replicas | `1` |
 | `services.<service>.hpa.maxReplicas` | Maximum number of replicas | `5` |

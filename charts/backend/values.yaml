@@ -10,6 +10,7 @@ global:
     password: "" # Required: provide via --set
   imagePullPolicy: IfNotPresent
   dataRetentionDays: 30  # Default retention period in days. 0 = forever.
+  skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
 
 
 # This enables HTTP basic authentication for the UI, pending when full authN & authZ are implemented. 
@@ -118,6 +119,7 @@ postgres:
     autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
     # NOTE: For autoCreateDBs to work, the IAM database user must have CREATEDB permission.
     # Grant with: ALTER USER "zt-db-762@local-bebop-448118-g4.iam" CREATEDB;
+    privateIP: false  # Set to true to use private IP connectivity for Cloud SQL instances without public IP
     workloadIdentity:
       enabled: true  # Enable Workload Identity for authentication
     proxy:
@@ -186,6 +188,7 @@ storage:
 
 # Application Services
 services:
+  activateNetworkPolicies: true  # Dev CNIs like standard Flannel doesn't support NetworkPolicies. zymtrace will still create it, but it won't be enforced. 
   common:
     imageTag: ""
     nodeSelector: {}
@@ -207,13 +210,13 @@ services:
       maxReplicas: 10
       targetCPUUtilizationPercentage: 80
       targetMemoryUtilizationPercentage: 80  
-      # behavior:
-      #   scaleDown:
-      #     stabilizationWindowSeconds: 100
-      #     policies:
-      #     - type: Percent
-      #       value: 100
-      #       periodSeconds: 15
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 160
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
 
   ingest:
     image:

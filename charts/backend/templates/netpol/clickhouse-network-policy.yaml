@@ -1,0 +1,46 @@
+{{- if and .Values.services.activateNetworkPolicies (eq .Values.clickhouse.mode "create") (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1.networking.k8s.io") }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "clickhouse-network-policy") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list . "clickhouse") }}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow access from ingest service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "ingest") }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.http.port }}
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.native.port }}
+  # Allow access from web service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "web") }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.http.port }}
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.native.port }}
+  # Allow access from migrate job
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "migrate") }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.http.port }}
+    - protocol: TCP
+      port: {{ .Values.clickhouse.create.service.native.port }}
+{{- end }}

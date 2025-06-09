@@ -1,0 +1,44 @@
+{{- if and .Values.services.activateNetworkPolicies (or (eq .Values.postgres.mode "create") (eq .Values.postgres.mode "gcp_cloudsql")) (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1.networking.k8s.io") }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "postgres-network-policy") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- if eq .Values.postgres.mode "gcp_cloudsql" }}
+      app: {{ include "zymtrace.resourceName" (list . "postgres-proxy") }}
+      {{- else if eq .Values.postgres.mode "create" }}
+      app: {{ include "zymtrace.resourceName" (list . "postgres") }}
+      {{- end }}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow access from migrate service/job
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "migrate") }}
+    ports:
+    - protocol: TCP
+      port: {{ if eq .Values.postgres.mode "gcp_cloudsql" }}{{ .Values.postgres.gcp_cloudsql.proxy.port }}{{ else }}{{ .Values.postgres.create.service.port }}{{ end }}
+  # Allow access from identity service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "identity") }}
+    ports:
+    - protocol: TCP
+      port: {{ if eq .Values.postgres.mode "gcp_cloudsql" }}{{ .Values.postgres.gcp_cloudsql.proxy.port }}{{ else }}{{ .Values.postgres.create.service.port }}{{ end }}
+  # Allow access from symdb service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "symdb") }}
+    ports:
+    - protocol: TCP
+      port: {{ if eq .Values.postgres.mode "gcp_cloudsql" }}{{ .Values.postgres.gcp_cloudsql.proxy.port }}{{ else }}{{ .Values.postgres.create.service.port }}{{ end }}
+{{- end }}
