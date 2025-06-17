@@ -66,11 +66,10 @@ clickhouse:
       size: 30Gi
       className: ""
   use_existing:
-    host: ""  # host:nativePort
-    user: ""
+    host: ""  # Must include protocol and port: http://myhost:8123 or https://myhost:8443
+              # NOTE: Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
     password: ""
     database: "zymtrace" # This is used as the DB prefix, so the actual databases will be `zymtrace_profiling` and `zymtrace_metrics `.
-    secure: false  # Enable TLS/secure connection
     autoCreateDBs: false  # When true, sets INGEST__CLICKHOUSE__AUTO_CREATE_DBS=true and INGEST__METRICS__CLICKHOUSE__AUTO_CREATE_DBS=true
     # NOTE: For autoCreateDBs to work, the database user must have CREATE DATABASE permission
 
@@ -135,6 +134,15 @@ postgres:
           memory: "556Mi"
       port: 5432
     serviceAccount: "zymtrace-cloudsql-sa" # Kubernetes service account bound to GCP service account via Workload Identity
+    # Replica configuration for CloudSQL proxy (only applies when HPA is disabled)
+    replicas: 1
+    # HPA configuration for CloudSQL proxy
+    hpa:
+      enabled: false  # Set to true to enable HPA for CloudSQL proxy
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 80
+      targetMemoryUtilizationPercentage: 80
 
 # Object Storage Configuration
 storage:
@@ -204,6 +212,8 @@ services:
     #   effect: "NoExecute"
     #   tolerationSeconds: 300
     env: {}
+      # OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://localhost:9090/api/v1/otlp/v1/metrics"
+      # OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://localhhost:4317"
     hpa:
       enabled: false  # Set to true to enable HPA for all services. Overide this common config in the service section below.
       minReplicas: 1

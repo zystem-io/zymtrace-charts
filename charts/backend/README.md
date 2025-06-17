@@ -327,6 +327,47 @@ This chart supports three types of object storage for storing symbol files:
 1. **Create mode**: Deploys MinIO within the cluster
 2. **Use existing**: Connects to external storage services (MinIO, AWS S3, or Google Cloud Storage)
 
+## ClickHouse Database Configuration
+
+This chart supports two modes for ClickHouse database deployment:
+
+1. **Create mode**: Deploys ClickHouse within the cluster (default)
+2. **Use existing**: Connects to an external ClickHouse instance
+
+### Using an Existing ClickHouse Instance
+Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
+
+As a result, when connecting to an external ClickHouse instance, you must provide a complete URL with protocol and port:
+
+```yaml
+clickhouse:
+  mode: "use_existing"
+  use_existing:
+    host: "https://clickhouse.example.com:8443"  # Must include protocol and port
+    user: "your-username"
+    password: "your-password"
+    database: "zymtrace"  # Database prefix - actual DBs will be zymtrace_profiling and zymtrace_metrics
+    autoCreateDBs: false  # Enable automatic database creation if user has permissions
+```
+
+#### Host URL Requirements
+
+The `host` field must include:
+- **Protocol**: `http://` or `https://`
+- **Hostname/IP**: The ClickHouse server address
+- **Port**: The HTTP interface port (typically 8123 for HTTP, 8443 for HTTPS)
+
+
+**Valid examples:**
+- `http://clickhouse.internal:8123`
+- `https://my-clickhouse.example.com:8443`
+- `http://192.168.1.100:8123`
+
+
+#### Auto-Database Creation
+
+When `autoCreateDBs: true`, the chart will automatically create the required databases (`zymtrace_profiling` and `zymtrace_metrics`) if they don't exist. The database user must have `CREATE DATABASE` permissions for this to work.
+
 ### Storage Types
 
 #### MinIO (Self-hosted)

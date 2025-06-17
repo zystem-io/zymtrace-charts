@@ -28,7 +28,9 @@ metadata:
     {{- include "zymtrace.labels" . | nindent 4 }}
     app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
 spec:
-  replicas: 1
+  {{- if not .Values.postgres.gcp_cloudsql.hpa.enabled }}
+  replicas: {{ .Values.postgres.gcp_cloudsql.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
@@ -73,4 +75,40 @@ spec:
               port: {{ .Values.postgres.gcp_cloudsql.proxy.port }}
             initialDelaySeconds: 15
             periodSeconds: 5
+
+---
+{{- if .Values.postgres.gcp_cloudsql.hpa.enabled }}
+{{- include "zymtrace.metricsServerAvailable" . }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "zymtrace.resourceName" (list $ "postgres-proxy") }}
+  minReplicas: {{ .Values.postgres.gcp_cloudsql.hpa.minReplicas }}
+  maxReplicas: {{ .Values.postgres.gcp_cloudsql.hpa.maxReplicas }}
+  metrics:
+    {{- if .Values.postgres.gcp_cloudsql.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.postgres.gcp_cloudsql.hpa.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.postgres.gcp_cloudsql.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.postgres.gcp_cloudsql.hpa.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
 {{- end }}

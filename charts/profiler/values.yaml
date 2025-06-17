@@ -3,8 +3,8 @@ global:
   imageRegistry: "ghcr.io/zystem-io"
   registry:
     requirePullSecret: false
-    username: "" # Required: provide via --set
-    password: "" # Required: provide via --set
+    username: "" # --set global.registry.username=<username>
+    password: "" # --set global.registry.password=<password>
   imagePullSecrets:
     - name: null # Will be overridden by the template --> zymtrace-registry-cred
   imagePullPolicy: IfNotPresent
@@ -28,29 +28,33 @@ serviceAccount:
 profiler:
   image:
     repository: zymtrace-pub-profiler
-    tag: ""
+    tag: "" # Override with --set profiler.image.tag=<version>
   securityContext:
     capabilities:
       add:
         - SYS_ADMIN # CAP_SYS_ADMIN is required
   cudaProfiler:
-    enabled: false # Set to true to enable CUDA profiler
+    enabled: false # Set to true to enable CUDA profiler. Override with --set profiler.cudaProfiler.enabled=true
     hostMountPath: "/var/lib/zymtrace/profiler" #can't use the standard /opt/zymtrace/profiler path because GKE mounts /opt as readonly for secuirty reasons. 
   args:
     # For all available arguments, see: https://docs.zymtrace.com/profiler-cli-args
+    # Override the collection agent with: --set profiler.args[0]="-collection-agent=your-service.namespace.svc.cluster.local:80"
     
     - "-collection-agent=zymtrace-ui.zymtrace.svc.cluster.local:80"
     - "-disable-tls"
-    
+    # - "-project=project-name" 
+    # - "-zymtrace-protocol"
     # - "-tags=cloud_region:us-central1;env:staging"  
     # - "-v"
     # - "-dwarf"
+    # - "-zymtrace-protocol"
   # Note: CLI args take precedence over environment variables
   env:
     # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
+    # Override environment variables with: --set profiler.env.ZYMTRACE_COLLECTION_AGENT="your-service:80"
     
     #ZYMTRACE_COLLECTION_AGENT: "zymtrace-ui.zymtrace.svc.cluster.local:80" 
-    #ZYMTRACE_DISABLE_TLS: "false"
+    #ZYMTRACE_DISABLE_TLS: "true"
     # ZYMTRACE_TAGS: "region:us-west;env:prod"
     
     # Proxy settings
@@ -73,6 +77,7 @@ profiler:
       memory: "1Gi"
   nodeSelector:
     {}
+    # Override with: --set profiler.nodeSelector."kubernetes\.io/arch"=amd64
     # kubernetes.io/arch: amd64
     # nvidia.com/gpu: "true"           # Any node with NVIDIA GPU
     # nvidia.com/gpu.product: "A100"   # Specific GPU model

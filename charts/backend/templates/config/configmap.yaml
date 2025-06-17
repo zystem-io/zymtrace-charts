@@ -1,6 +1,11 @@
 {{- include "zymtrace.validateMode" (list "clickhouse" .Values.clickhouse.mode) }}
 {{- include "zymtrace.validateMode" (list "postgres" .Values.postgres.mode) }}
 {{- include "zymtrace.validateMode" (list "storage" .Values.storage.mode) }}
+{{- if eq .Values.clickhouse.mode "use_existing" }}
+{{- if .Values.clickhouse.use_existing.host }}
+{{- include "zymtrace.validateEndpoint" (list .Values.clickhouse.use_existing.host) }}
+{{- end }}
+{{- end }}
 {{- if eq .Values.storage.mode "use_existing" }}
 {{- if not (or (eq .Values.storage.use_existing.type "minio") (eq .Values.storage.use_existing.type "s3") (eq .Values.storage.use_existing.type "gcs")) }}
 {{- fail "Storage type must be either 'minio', 's3', or 'gcs'" }}
@@ -37,32 +42,29 @@ data:
   # Service configurations - ClickHouse
   {{- if eq .Values.clickhouse.mode "create" }}
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
-  INGEST__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
+  INGEST__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
   #metrics
   INGEST__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
-  INGEST__METRICS__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
+  INGEST__METRICS__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   INGEST__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_metrics"
 
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
-  WEB__CLICKHOUSE__ADDR: "{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.native.port }}"
+  WEB__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   WEB__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
   {{- else }}
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   INGEST__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
-  INGEST__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_profiling"
   INGEST__CLICKHOUSE__AUTO_CREATE_DBS: {{ .Values.clickhouse.use_existing.autoCreateDBs | default false | quote }}
   #metrics
   INGEST__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   INGEST__METRICS__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
-  INGEST__METRICS__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
   INGEST__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_metrics"
   INGEST__METRICS__CLICKHOUSE__AUTO_CREATE_DBS: {{ .Values.clickhouse.use_existing.autoCreateDBs | default false | quote }}
 
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   WEB__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
-  WEB__CLICKHOUSE__SECURE: "{{ .Values.clickhouse.use_existing.secure }}"
   WEB__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_profiling"
   {{- end }}
 
