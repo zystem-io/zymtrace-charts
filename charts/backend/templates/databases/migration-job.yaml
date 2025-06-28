@@ -23,8 +23,9 @@ spec:
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "migrate") }}
     spec:
-      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
-      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.nodeSelector" (list $ "migrate") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "migrate") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "migrate") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       initContainers:
         {{- if eq .Values.clickhouse.mode "create" }}
@@ -91,5 +92,5 @@ spec:
                 sleep 120
                 exit 1
               fi
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "migrate") | nindent 10 }}
       restartPolicy: OnFailure

@@ -20,8 +20,9 @@ spec:
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "symdb") }}
     spec:
-      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
-      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.nodeSelector" (list $ "symdb") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "symdb") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "symdb") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "symdb") }}
@@ -35,7 +36,7 @@ spec:
           resources:
             {{- toYaml .Values.services.symdb.resources | nindent 12 }}
             
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "symdb") | nindent 10 }}
         # livenessProbe:
         #   httpGet:
         #     path: /health
@@ -56,6 +57,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "zymtrace.labels" . | nindent 4 }}
+{{- if .Values.global.enableServiceMigration | default false }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+    "helm.sh/hook-weight": "-1"
+{{- end }}
 spec:
   type: ClusterIP
   ports:

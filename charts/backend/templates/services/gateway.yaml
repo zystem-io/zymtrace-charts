@@ -1,0 +1,89 @@
+{{- include "zymtrace.validateBasicAuth" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "migrate") }}"
+spec:
+  replicas: {{ .Values.services.gateway.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+    spec:
+      {{- include "zymtrace.nodeSelector" (list $ "gateway") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "gateway") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "gateway") | nindent 6 }}
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "gateway") }}:{{ include "zymtrace.serviceTag" (list $ "gateway") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.gateway.port }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.services.gateway.adminPort }}
+              protocol: TCP
+          env:
+            {{- if .Values.auth.basic.enabled }}
+            - name: UI_USER
+              value: {{ .Values.auth.basic.username | quote }}
+            - name: UI_PASSWORD
+              value: {{ .Values.auth.basic.password | quote }}
+            {{- end }}
+          {{- include "zymtrace.gatewayServiceEnvConfig" (list $ "gateway") | nindent 10 }}
+          resources:
+            {{- toYaml .Values.services.gateway.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: admin
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: admin
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+spec:
+  type: {{ default "ClusterIP" .Values.services.gateway.service.type }}
+  ports:
+    - port: {{ .Values.services.gateway.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.services.gateway.service.type "NodePort") .Values.services.gateway.service.nodePort }}
+      nodePort: {{ .Values.services.gateway.service.nodePort }}
+      {{- end }}
+    - port: {{ .Values.services.gateway.adminPort }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+---
+{{- include "zymtrace.hpa" (list $ "gateway" .Values.services.gateway) }}

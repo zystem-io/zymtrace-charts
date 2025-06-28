@@ -30,6 +30,9 @@ spec:
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "bucket-check") }}
     spec:
+      {{- include "zymtrace.nodeSelector" (list $ "bucket-check") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "bucket-check") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "bucket-check") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: bucket-check
@@ -79,6 +82,6 @@ spec:
                 echo "Bucket check failed with status $CHECK_STATUS"
                 exit 1
               fi
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "migrate") | nindent 10 }}
       restartPolicy: OnFailure
 {{- end }}

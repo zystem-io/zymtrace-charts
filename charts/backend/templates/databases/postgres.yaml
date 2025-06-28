@@ -20,6 +20,7 @@ spec:
     spec:
       {{- include "zymtrace.dbNodeSelector" (list "postgres" $) | nindent 6 }}
       {{- include "zymtrace.dbTolerations" (list "postgres" $) | nindent 6 }}
+      {{- include "zymtrace.dbAffinity" (list "postgres" $) | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
           image: "{{ include "database.imageRegistry" . }}{{ .Values.postgres.create.image.repository }}:{{ .Values.postgres.create.image.tag }}"

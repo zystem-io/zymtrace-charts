@@ -63,6 +63,62 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list . "secrets") }}
 {{- end }}
 
+{{/*
+Gateway environment configuration (includes gateway-specific ConfigMap)
+*/}}
+{{- define "zymtrace.gatewayEnvConfig" -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list . "gateway-config") }}
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list . "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list . "secrets") }}
+{{- end }}
+
+{{/*
+Service environment configuration with individual service environment variables
+*/}}
+{{- define "zymtrace.serviceEnvConfig" -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list $root "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "secrets") }}
+{{- if $serviceConfig.env }}
+env:
+{{- range $key, $value := $serviceConfig.env }}
+  - name: {{ $key }}
+    value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Gateway environment configuration with individual service environment variables
+*/}}
+{{- define "zymtrace.gatewayServiceEnvConfig" -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list $root "gateway-config") }}
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list $root "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "secrets") }}
+{{- if $serviceConfig.env }}
+env:
+{{- range $key, $value := $serviceConfig.env }}
+  - name: {{ $key }}
+    value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{/* Return the appropriate zymtrace image registry with trailing slash, or empty if not specified */}}
 {{- define "zymtrace.imageRegistry" -}}
@@ -111,17 +167,35 @@ Return image tag version. Precedence is: 1) service tag 2. Common service tag. 3
 
 {{/* Node Selector configuration for services */}}
 {{- define "zymtrace.nodeSelector" -}}
-{{- with .Values.services.common.nodeSelector }}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+{{- $commonNodeSelector := $root.Values.services.common.nodeSelector -}}
+{{- $serviceNodeSelector := $serviceConfig.nodeSelector -}}
+{{- if or $serviceNodeSelector $commonNodeSelector }}
 nodeSelector:
-  {{- toYaml . | nindent 2 }}
+  {{- if $serviceNodeSelector }}
+  {{- toYaml $serviceNodeSelector | nindent 2 }}
+  {{- else if $commonNodeSelector }}
+  {{- toYaml $commonNodeSelector | nindent 2 }}
+  {{- end }}
 {{- end }}
 {{- end }}
 
 {{/* Tolerations configuration for services */}}
 {{- define "zymtrace.tolerations" -}}
-{{- with .Values.services.common.tolerations }}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+{{- $commonTolerations := $root.Values.services.common.tolerations -}}
+{{- $serviceTolerations := $serviceConfig.tolerations -}}
+{{- if or $serviceTolerations $commonTolerations }}
 tolerations:
-  {{- toYaml . | nindent 2 }}
+  {{- if $serviceTolerations }}
+  {{- toYaml $serviceTolerations | nindent 2 }}
+  {{- else if $commonTolerations }}
+  {{- toYaml $commonTolerations | nindent 2 }}
+  {{- end }}
 {{- end }}
 {{- end }}
 
@@ -218,7 +292,7 @@ Common environment variables handling with validation
 {{- fail (printf "Invalid mode '%s' for component '%s'. Allowed values are 'create' or 'use_existing'" $mode $component) -}}
 {{- end -}}
 {{- end -}}
-{{- end -}}
+{{- end }}
 
 {{/* Validate endpoint starts with http:// or https:// */}}
 {{- define "zymtrace.validateEndpoint" -}}
@@ -239,8 +313,37 @@ Common environment variables handling with validation
 
 {{/* Check if metrics-server is available in the cluster */}}
 {{- define "zymtrace.metricsServerAvailable" -}}
+{{- if not .Values.global.skipCapabilityCheck -}}
 {{- $result := (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1beta1.metrics.k8s.io") -}}
 {{- if not $result -}}
 {{- fail "\n⛔ ERROR: Metrics Server not detected\n\nHorizontal Pod Autoscaler (HPA) requires Metrics Server to function.\n\nOptions:\n  1. Install Metrics Server:\n     kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml\n\n  2. Disable HPA in your values.yaml:\n     hpa.enabled: false\n\nVerify installation with:\n  kubectl get apiservice v1beta1.metrics.k8s.io" -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
+
+{{/* Affinity configuration for services */}}
+{{- define "zymtrace.affinity" -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+{{- $commonAffinity := $root.Values.services.common.affinity -}}
+{{- $serviceAffinity := $serviceConfig.affinity -}}
+{{- if or $serviceAffinity $commonAffinity }}
+affinity:
+  {{- if $serviceAffinity }}
+  {{- toYaml $serviceAffinity | nindent 2 }}
+  {{- else if $commonAffinity }}
+  {{- toYaml $commonAffinity | nindent 2 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/* Affinity configuration for databases */}}
+{{- define "zymtrace.dbAffinity" -}}
+{{- $component := index . 0 -}}
+{{- $root := index . 1 -}}
+{{- if hasKey (index $root.Values $component) "affinity" }}
+affinity:
+  {{- toYaml (index $root.Values $component "affinity") | nindent 2 }}
+{{- end }}
+{{- end }}

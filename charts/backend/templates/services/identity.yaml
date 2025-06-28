@@ -20,8 +20,9 @@ spec:
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "identity") }}
     spec:
-      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
-      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.nodeSelector" (list $ "identity") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "identity") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "identity") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "identity") }}
@@ -35,7 +36,7 @@ spec:
           resources:
             {{- toYaml .Values.services.identity.resources | nindent 12 }}
             
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "identity") | nindent 10 }}
 ---
 apiVersion: v1
 kind: Service

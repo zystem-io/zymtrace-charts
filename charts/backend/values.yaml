@@ -11,11 +11,13 @@ global:
   imagePullPolicy: IfNotPresent
   dataRetentionDays: 30  # Default retention period in days. 0 = forever.
   skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
+  enableServiceMigration: false  # When true: uses pre-upgrade hooks for service migration. When false: standard ClusterIP services (default)
 
 
-# This enables HTTP basic authentication for the UI, pending when full authN & authZ are implemented. 
-auth: 
-  basic: 
+# This enables HTTP basic authentication for the Gateway service, which provides access to the UI and other backend services.
+# The Gateway serves as the main entry point and handles authentication for all routed traffic.
+auth:
+  basic:
     enabled: false   # Set to true to enable basic authentication
     username: ""     # Required when enabled 
     password: ""     # Required when enabled 
@@ -38,6 +40,15 @@ clickhouse:
   #   operator: "Equal"
   #   value: "value"
   #   effect: "NoSchedule"
+  affinity: {}
+    # nodeAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     nodeSelectorTerms:
+    #     - matchExpressions:
+    #       - key: node-type
+    #         operator: In
+    #         values:
+    #         - database
   create:
     image:
       repository: clickhouse/clickhouse-server
@@ -81,6 +92,15 @@ postgres:
   #   operator: "Equal"
   #   value: "value"
   #   effect: "NoSchedule"
+  affinity: {}
+    # nodeAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     nodeSelectorTerms:
+    #     - matchExpressions:
+    #       - key: node-type
+    #         operator: In
+    #         values:
+    #         - database
   create:
     image:
       repository: postgres
@@ -153,6 +173,15 @@ storage:
   #   operator: "Equal"
   #   value: "value"
   #   effect: "NoSchedule"
+  affinity: {}
+    # nodeAffinity:
+    #   requiredDuringSchedulingIgnoredDuringExecution:
+    #     nodeSelectorTerms:
+    #     - matchExpressions:
+    #       - key: node-type
+    #         operator: In
+    #         values:
+    #         - storage
   create:
     image:
       repository: minio/minio
@@ -214,12 +243,33 @@ services:
     env: {}
       # OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://localhost:9090/api/v1/otlp/v1/metrics"
       # OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://localhhost:4317"
+    affinity: {}
+      # nodeAffinity:
+      #   requiredDuringSchedulingIgnoredDuringExecution:
+      #     nodeSelectorTerms:
+      #     - matchExpressions:
+      #       - key: kubernetes.io/arch
+      #         operator: In
+      #         values:
+      #         - amd64
+      # Example pod anti-affinity:
+      # podAntiAffinity:
+      #   preferredDuringSchedulingIgnoredDuringExecution:
+      #   - weight: 100
+      #     podAffinityTerm:
+      #       labelSelector:
+      #         matchExpressions:
+      #         - key: app
+      #           operator: In
+      #           values:
+      #           - zymtrace
+      #       topologyKey: kubernetes.io/hostname
     hpa:
       enabled: false  # Set to true to enable HPA for all services. Overide this common config in the service section below.
       minReplicas: 1
       maxReplicas: 10
       targetCPUUtilizationPercentage: 80
-      targetMemoryUtilizationPercentage: 80  
+      targetMemoryUtilizationPercentage: 80
       behavior:
         scaleDown:
           stabilizationWindowSeconds: 160
@@ -243,11 +293,24 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "1000m"
+        cpu: "200m"
         memory: "512Mi"
       limits:
         cpu: "4000m"
         memory: "2Gi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # workload-type: compute-intensive
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "ingest"
+      #   effect: "NoSchedule"
+    env: {}
+      # CUSTOM_INGEST_SETTING: "value"
+      # RUST_LOG: "debug"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
 
   web:
     image:
@@ -269,6 +332,18 @@ services:
       limits:
         cpu: "4000m"
         memory: "4Gi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # disk-type: ssd
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "web"
+      #   effect: "NoSchedule"
+    env: {}
+      # RUST_LOG: "info"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
 
   symdb:
     image:
@@ -290,8 +365,19 @@ services:
       limits:
         cpu: "1000m"
         memory: "1Gi"
-    env:
-      #SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # storage-type: high-iops
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "symdb"
+      #   effect: "NoSchedule"
+    env: {}
+      # RUST_LOG: "debug"
+      # SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
 
   ui:
     image:
@@ -299,16 +385,12 @@ services:
       tag: ""
     port: 80
     replicas: 1
-    # Service type configuration: ClusterIP, NodePort, or LoadBalancer
-    service:
-      type: ClusterIP
-      # Used for NodePort service type
-      nodePort: ""
     # Use common HPA settings unless you need service-specific values
+    # Individual HPA settings take precedence over common settings when uncommented
     #hpa:
-    #  enabled: false
+    #  enabled: true
     #  minReplicas: 1
-    #  targetCPUUtilizationPercentage: 80
+    #  targetCPUUtilizationPercentage: 70
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
     resources:
@@ -318,6 +400,18 @@ services:
       limits:
         cpu: "500m"
         memory: "512Mi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # node-type: frontend
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "ui"
+      #   effect: "NoSchedule"
+    env: {}
+      # NODE_ENV: "production"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
 
   identity:
     image:
@@ -339,7 +433,19 @@ services:
       limits:
         cpu: "500m"
         memory: "512Mi"
-        
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # workload-type: auth
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "identity"
+      #   effect: "NoSchedule"
+    env: {}
+      # RUST_LOG: "info"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
+
   #HPA setting doesn't apply to the migration service. 
   migrate:
     image:
@@ -352,11 +458,63 @@ services:
       limits:
         cpu: "500m"
         memory: "512Mi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # workload-type: migration
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "migration"
+      #   effect: "NoSchedule"
+    env: {}
+      # RUST_LOG: "debug"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
 
-# Configuration for exposing the UI through ingress
-# NOTE: When ingress is enabled, service type for UI should be ClusterIP.
-# For direct external access without ingress, you can set service type to LoadBalancer or NodePort
-# in the respective service configurations.
+  gateway:
+    replicas: 1
+    image:
+      repository: zymtrace-gateway
+      tag: ""
+     # Service type configuration: ClusterIP, NodePort, or LoadBalancer
+    service:
+      type: ClusterIP
+      # Used for NodePort service type
+      nodePort: ""
+    port: 80
+    adminPort: 9901
+    # Use common HPA settings unless you need service-specific values
+    # Individual HPA settings take precedence over common settings when uncommented
+    #hpa:
+    #  enabled: true
+    #  minReplicas: 2
+    #  maxReplicas: 8
+    #  targetCPUUtilizationPercentage: 75
+    #  targetMemoryUtilizationPercentage: 80
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+      # node-type: gateway
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "gateway"
+      #   effect: "NoSchedule"
+    env: {}
+      # ENVOY_CUSTOM_SETTING: "value"
+      # LOG_LEVEL: "debug"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
+
+# Configuration for exposing services through ingress
+# NOTE: The Gateway serves as the main entry point and routes traffic to all backend services including the UI.# The Gateway is designed to be the external-facing service, while UI is accessed through the Gateway.
+# For direct external access to individual services without ingress, you can set service type to LoadBalancer or NodePort in the gat
 ingress:
  # Set to true if you want to expose services through an existing ingress controller
  enabled: false
@@ -377,19 +535,19 @@ ingress:
  # Nginx:
  #   nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
  #   nginx.ingress.kubernetes.io/http2-enable: "true"
- # 
+ #
  # Traefik:
  #   traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
  #   traefik.ingress.kubernetes.io/router.tls: "true"
  #   traefik.ingress.kubernetes.io/service.serversscheme: "h2c"
- # 
+ #
  # AWS ALB:
  #   alb.ingress.kubernetes.io/backend-protocol-version: "GRPC"
  #   alb.ingress.kubernetes.io/target-type: "ip"
  annotations: {}
 
  hosts:
-   ui:
+   gateway:
      enabled: true
      host: "" # e.g zymtrace.company.com
      paths:
@@ -408,7 +566,7 @@ ingress:
 
  # TLS config example:
  # tls:
- # - secretName: zymtrace-ui-tls
+ # - secretName: zymtrace-gateway-tls
  #   hosts:
  #     - zymtrace.company.com
  tls: []

@@ -1,0 +1,24 @@
+{{- if and .Values.services.activateNetworkPolicies (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1.networking.k8s.io") }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "ui-network-policy") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list . "ui") }}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Only allow access from gateway service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "gateway") }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.services.ui.port }}
+{{- end }}

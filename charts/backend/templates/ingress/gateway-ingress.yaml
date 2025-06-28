@@ -1,8 +1,8 @@
-{{- if and .Values.ingress.enabled .Values.ingress.hosts.ui.enabled }}
+{{- if and .Values.ingress.enabled .Values.ingress.hosts.gateway.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "zymtrace.resourceName" (list $ "ui-ingress") }}
+  name: {{ include "zymtrace.resourceName" (list $ "gateway-ingress") }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "zymtrace.labels" . | nindent 4 }}
@@ -10,7 +10,7 @@ metadata:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "4"
     "helm.sh/hook-delete-policy": "before-hook-creation,hook-failed"
-    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "ui") }}"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "gateway") }}"
     "helm.sh/resource-policy": "keep"
     {{- if eq .Values.ingress.className "nginx" }}
     # Automatically add HTTP/2 and gRPC support for Nginx ingress
@@ -21,7 +21,7 @@ metadata:
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- with .Values.ingress.hosts.ui.annotations }}
+    {{- with .Values.ingress.hosts.gateway.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
@@ -39,16 +39,16 @@ spec:
     {{- end }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.hosts.ui.host | quote }}
+    - host: {{ .Values.ingress.hosts.gateway.host | quote }}
       http:
         paths:
-          {{- range .Values.ingress.hosts.ui.paths }}
+          {{- range .Values.ingress.hosts.gateway.paths }}
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "zymtrace.resourceName" (list $ "ui") }}
+                name: {{ include "zymtrace.resourceName" (list $ "gateway") }}
                 port:
-                  number: {{ $.Values.services.ui.port }}
+                  number: {{ $.Values.services.gateway.port }}
           {{- end }}
 {{- end }}

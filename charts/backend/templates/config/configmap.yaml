@@ -52,6 +52,10 @@ data:
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   WEB__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   WEB__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
+
+  WEB__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
+  WEB__METRICS__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
+  WEB__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_metrics"
   {{- else }}
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   INGEST__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
@@ -66,6 +70,10 @@ data:
   WEB__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   WEB__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
   WEB__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_profiling"
+
+  WEB__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
+  WEB__METRICS__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
+  WEB__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_metrics"
   {{- end }}
 
   # Service configurations - Postgres
@@ -98,9 +106,9 @@ data:
 
   # Service endpoints
   INGEST__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
-  INGEST__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.port }}"
+  INGEST__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.port }}"
   SYMDB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
-  WEB__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.port }}"
+  WEB__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.port }}"
   WEB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
   
   # Event TTL.
@@ -164,6 +172,7 @@ stringData:
   INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
 
   WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
+  WEB__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
   {{- else }}
   CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
   INGEST__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
@@ -172,6 +181,7 @@ stringData:
   INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
 
   WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
+  WEB__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
   {{- end }}
 
   {{- if eq .Values.postgres.mode "create" }}

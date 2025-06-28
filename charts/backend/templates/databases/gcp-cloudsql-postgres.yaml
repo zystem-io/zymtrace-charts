@@ -43,6 +43,7 @@ spec:
     spec:
       {{- include "zymtrace.dbNodeSelector" (list "postgres" $) | nindent 6 }}
       {{- include "zymtrace.dbTolerations" (list "postgres" $) | nindent 6 }}
+      {{- include "zymtrace.dbAffinity" (list "postgres" $) | nindent 6 }}
       serviceAccountName: {{ .Values.postgres.gcp_cloudsql.serviceAccount }}
       containers:
         - name: cloud-sql-proxy

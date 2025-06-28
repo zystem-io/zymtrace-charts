@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "gateway-config") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+data:
+  SYMDB_HASH_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "symdb") }}.{{ .Release.Namespace }}.svc.cluster.local
+  SYMDB_HASH_CLUSTER_PORT: "{{ .Values.services.symdb.port }}"
+  SYMDB_RR_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "symdb") }}.{{ .Release.Namespace }}.svc.cluster.local
+  SYMDB_RR_CLUSTER_PORT: "{{ .Values.services.symdb.port }}"
+  ADMIN_PORT: "{{ .Values.services.gateway.adminPort }}"
+  LISTENER_PORT: "{{ .Values.services.gateway.port }}"
+  INGEST_RR_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "ingest") }}.{{ .Release.Namespace }}.svc.cluster.local
+  INGEST_RR_CLUSTER_PORT: "{{ .Values.services.ingest.port }}"
+  WEB_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "web") }}.{{ .Release.Namespace }}.svc.cluster.local
+  WEB_CLUSTER_PORT: "{{ .Values.services.web.port }}"
+  UI_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "ui") }}.{{ .Release.Namespace }}.svc.cluster.local
+  UI_CLUSTER_PORT: "{{ .Values.services.ui.port }}"

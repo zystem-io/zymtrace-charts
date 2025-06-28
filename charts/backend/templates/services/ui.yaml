@@ -1,4 +1,3 @@
-{{- include "zymtrace.validateBasicAuth" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,8 +20,9 @@ spec:
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "ui") }}
     spec:
-      {{- include "zymtrace.nodeSelector" . | nindent 6 }}
-      {{- include "zymtrace.tolerations" . | nindent 6 }}
+      {{- include "zymtrace.nodeSelector" (list $ "ui") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "ui") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "ui") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "ui") }}
@@ -35,14 +35,8 @@ spec:
           resources:
             {{- toYaml .Values.services.ui.resources | nindent 12 }}
             
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
-          {{- if .Values.auth.basic.enabled }}
-          env:
-            - name: UI_USER
-              value: {{ .Values.auth.basic.username | quote }}
-            - name: UI_PASSWORD
-              value: {{ .Values.auth.basic.password | quote }}
-          {{- end }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "ui") | nindent 10 }}
+
         # livenessProbe:
         #   httpGet:
         #     path: /health
@@ -63,16 +57,19 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "zymtrace.labels" . | nindent 4 }}
+{{- if .Values.global.enableServiceMigration | default false }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+    "helm.sh/hook-weight": "-1"
+{{- end }}
 spec:
-  type: {{ default "ClusterIP" .Values.services.ui.service.type }}
+  type: ClusterIP
   ports:
     - port: {{ .Values.services.ui.port }}
       targetPort: http
       protocol: TCP
       name: http
-      {{- if and (eq .Values.services.ui.service.type "NodePort") .Values.services.ui.service.nodePort }}
-      nodePort: {{ .Values.services.ui.service.nodePort }}
-      {{- end }}
   selector:
     app: {{ include "zymtrace.resourceName" (list $ "ui") }}
 ---

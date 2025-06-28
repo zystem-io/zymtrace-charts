@@ -11,6 +11,67 @@ This Helm chart deploys zymtrace backend services to a Kubernetes cluster.
 - For Google Cloud SQL with IAM: GKE cluster with Workload Identity configured
 - For NetworkPolicies: A CNI that supports NetworkPolicy enforcement (Calico, Cilium, Weave Net, etc.)
 
+## Key Features
+
+### ✨ Comprehensive Node Placement Control
+- **Service-level configuration**: Configure nodeSelector, tolerations, and affinity for individual services
+- **Database-level configuration**: Independent node placement settings for ClickHouse, PostgreSQL, and MinIO
+- **Intelligent precedence**: Individual service settings override common settings
+- **Complete coverage**: All services and databases support full node placement configuration
+
+### 🔧 Flexible Environment Variables
+- **Common environment variables**: Set shared environment variables across all services
+- **Service-specific overrides**: Each service can define its own environment variables
+- **Gateway service support**: Special handling for gateway service configuration
+- **Precedence control**: Service-specific env vars take priority over common settings
+
+### 🚀 Advanced Scheduling Features
+- **Pod affinity/anti-affinity**: Control pod co-location and separation
+- **Node affinity**: Schedule pods on specific node types
+- **Toleration support**: Allow scheduling on tainted nodes
+- **HPA integration**: Horizontal Pod Autoscaling with proper node placement
+
+### 🔒 Enhanced Security
+- **NetworkPolicies**: Fine-grained database access control
+- **Service isolation**: Limit database access to authorized services only
+- **CNI compatibility**: Automatic detection and graceful fallback
+
+## Quick Start Examples
+
+### Basic Installation
+```bash
+helm install zymtrace ./charts/backend \
+  --set global.licenseKey="your-license-key"
+```
+
+### Installation with Node Placement
+```bash
+helm install zymtrace ./charts/backend \
+  --set global.licenseKey="your-license-key" \
+  --set services.common.nodeSelector."kubernetes\.io/arch"="amd64" \
+  --set clickhouse.nodeSelector."workload-type"="database" \
+  --set postgres.nodeSelector."workload-type"="database"
+```
+
+### Installation with Service-Specific Configuration
+```bash
+helm install zymtrace ./charts/backend \
+  --set global.licenseKey="your-license-key" \
+  --set services.symdb.env.RUST_LOG="debug" \
+  --set services.web.env.RUST_LOG="info" \
+  --set services.symdb.nodeSelector."storage-type"="high-iops"
+```
+
+### Installation with External Databases
+```bash
+helm install zymtrace ./charts/backend \
+  --set global.licenseKey="your-license-key" \
+  --set clickhouse.mode="use_existing" \
+  --set clickhouse.use_existing.host="https://clickhouse.example.com:8443" \
+  --set postgres.mode="use_existing" \
+  --set postgres.use_existing.host="postgres.example.com:5432"
+```
+
 ## Network Security with NetworkPolicies
 
 This chart includes optional NetworkPolicy resources to secure database access within your cluster. NetworkPolicies restrict which pods can communicate with your PostgreSQL and ClickHouse databases.
@@ -113,34 +174,202 @@ To use HPA:
 - HPA uses the default service account in your deployment namespace
 - For production environments, verify the default service account has appropriate permissions for the autoscaling API
 
+## Service Configuration
+
+This chart provides flexible configuration options for each service, allowing you to customize behavior at both the common level and individual service level.
+
+### Individual Service Configuration
+
+Each service supports individual configuration that takes precedence over common settings:
+
+```yaml
+services:
+  # Common configuration applied to all services (unless overridden)
+  common:
+    nodeSelector:
+      kubernetes.io/arch: amd64
+    tolerations:
+    - key: "shared"
+      operator: "Equal"
+      value: "zymtrace"
+      effect: "NoSchedule"
+    affinity: {}
+    env:
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://jaeger:4317"
+  
+  # Individual service configuration (takes precedence over common)
+  symdb:
+    nodeSelector:
+      storage-type: high-iops  # Overrides common nodeSelector
+    tolerations:
+    - key: "workload"          # Overrides common tolerations
+      operator: "Equal"
+      value: "symdb"
+      effect: "NoSchedule"
+    env:
+      RUST_LOG: "debug"        # Service-specific environment variable
+      SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
+    affinity:
+      nodeAffinity:           # Service-specific affinity
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: workload-type
+              operator: In
+              values:
+              - database
+  
+  # Another service with different configuration
+  web:
+    env:
+      RUST_LOG: "info"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - zymtrace-web
+            topologyKey: kubernetes.io/hostname
+
+# Database configuration (independent of service settings)
+clickhouse:
+  nodeSelector:
+    storage-type: high-performance
+  tolerations:
+  - key: "database"
+    operator: "Equal"
+    value: "clickhouse"
+    effect: "NoSchedule"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: workload-type
+            operator: In
+            values:
+            - database
+
+postgres:
+  nodeSelector:
+    database-tier: primary
+  tolerations:
+  - key: "database"
+    operator: "Equal"
+    value: "postgres"
+    effect: "NoSchedule"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - zymtrace-postgres
+          topologyKey: kubernetes.io/hostname
+
+storage:
+  nodeSelector:
+    storage-type: object-storage
+  tolerations:
+  - key: "storage"
+    operator: "Equal"
+    value: "minio"
+    effect: "NoSchedule"
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 50
+        preference:
+          matchExpressions:
+          - key: storage-type
+            operator: In
+            values:
+            - high-iops
+```
+
+### Supported Individual Service Settings
+
+Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) supports:
+
+- **nodeSelector**: Node selection constraints
+- **tolerations**: Toleration of node taints
+- **affinity**: Pod affinity and anti-affinity rules
+- **env**: Service-specific environment variables
+- **resources**: CPU and memory limits/requests
+- **hpa**: Horizontal Pod Autoscaler settings
+
+### Environment Variables
+
+Set environment variables at the common level or per service:
+
+```yaml
+services:
+  common:
+    env:
+      # Applied to all services
+      SHARED_SETTING: "value"
+      OTEL_ENDPOINT: "http://otel-collector:4317"
+  
+  web:
+    env:
+      # Only applied to web service
+      WEB__CUSTOM_SETTING: "production"
+      RUST_LOG: "info"
+  
+  ingest:
+    env:
+      # Only applied to ingest service
+      RUST_LOG: "debug"  # Different log level for ingest
+```
+
 ## Node Placement
 
-This chart supports configuring node placement for both application services and database components using nodeSelector and tolerations.
+Control where pods are scheduled using nodeSelector, tolerations, and affinity.
 
 ### Node Selectors
 
-You can specify node selectors to control which nodes the pods are scheduled on:
+Specify node selectors at the common level or per service:
 
 ```yaml
-# For all services
+# Common node selector for all services
 services:
   common:
     nodeSelector:
       kubernetes.io/arch: amd64
       disk-type: ssd
 
-# For specific databases
+# Individual service node selectors (override common)
+services:
+  symdb:
+    nodeSelector:
+      storage-type: high-performance
+      workload-type: database
+
+# Database node selectors
 clickhouse:
   nodeSelector:
     storage-type: high-performance
+    
+postgres:
+  nodeSelector:
+    database-tier: primary
 ```
 
 ### Tolerations
 
-Tolerations allow pods to be scheduled on nodes with matching taints:
+Allow pods to be scheduled on tainted nodes:
 
 ```yaml
-# For all services
+# Common tolerations for all services
 services:
   common:
     tolerations:
@@ -149,7 +378,16 @@ services:
       value: "zymtrace"
       effect: "NoSchedule"
 
-# For specific databases
+# Individual service tolerations (override common)
+services:
+  ingest:
+    tolerations:
+    - key: "workload"
+      operator: "Equal"
+      value: "compute-intensive"
+      effect: "NoSchedule"
+
+# Database tolerations
 postgres:
   tolerations:
   - key: "node.kubernetes.io/memory-pressure"
@@ -158,50 +396,221 @@ postgres:
     tolerationSeconds: 3600
 ```
 
-**IMPORTANT NOTE:** When using node tolerations with tainted nodes, you must specify tolerations in both places:
+### Affinity Rules
 
-1. `services.common.tolerations` for all application services
-2. `clickhouse.tolerations`, `postgres.tolerations`, and `storage.tolerations` for database services
+Configure pod affinity and anti-affinity for both services and databases:
 
-Both sets of tolerations are necessary for initialization jobs (like zymtrace-minio-init) to work correctly.
+```yaml
+# Common affinity for all services
+services:
+  common:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/arch
+              operator: In
+              values:
+              - amd64
+
+# Individual service affinity (overrides common)
+services:
+  web:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - zymtrace-web
+            topologyKey: kubernetes.io/hostname
+
+# Database affinity configuration
+clickhouse:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: workload-type
+            operator: In
+            values:
+            - database
+
+postgres:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - zymtrace-postgres
+          topologyKey: kubernetes.io/hostname
+
+storage:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 50
+        preference:
+          matchExpressions:
+          - key: storage-type
+            operator: In
+            values:
+            - high-iops
+```
+
+### Configuration Precedence
+
+The configuration precedence (highest to lowest) is:
+
+1. **Individual service settings** (e.g., `services.symdb.nodeSelector`)
+2. **Common service settings** (e.g., `services.common.nodeSelector`)
+3. **Default values**
+
+**Database Configuration:** Databases (ClickHouse, PostgreSQL, MinIO) support their own dedicated configuration sections and do not inherit from service common settings. Each database component supports:
+- `nodeSelector`: Node selection constraints
+- `tolerations`: Toleration of node taints  
+- `affinity`: Pod affinity and anti-affinity rules
+
+**IMPORTANT NOTE:** When using tolerations with tainted nodes, ensure you configure tolerations for both:
+
+1. `services.common.tolerations` (for application services)
+2. Database component tolerations (e.g., `clickhouse.tolerations`, `postgres.tolerations`, `storage.tolerations`)
+
+This ensures initialization jobs and database pods can also run on tainted nodes.
 
 ## Parameters
 
+### Global Configuration
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `global.licenseKey` | Your zymtrace license key | `""` |
+| `global.namePrefix` | Prefix for all resource names | `"zymtrace"` |
+| `global.imageRegistry` | Default registry for all images | `"docker.io"` |
+| `global.appImageRegistry` | Specific registry for zymtrace backend services | `"ghcr.io/zystem-io"` |
+| `global.registry.requirePullSecret` | Whether to use image pull secrets | `false` |
+| `global.imagePullPolicy` | Image pull policy | `"IfNotPresent"` |
+| `global.dataRetentionDays` | Data retention period in days (0 = forever) | `30` |
+
+### Network Security
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `services.activateNetworkPolicies` | Enable NetworkPolicy creation for database access control | `true` |
-| `services.<service>.hpa.enabled` | Enable HPA for the service | `false` |
-| `services.<service>.hpa.minReplicas` | Minimum number of replicas | `1` |
-| `services.<service>.hpa.maxReplicas` | Maximum number of replicas | `5` |
-| `services.<service>.hpa.targetCPUUtilizationPercentage` | Target CPU utilization percentage | `80` |
-| `services.ui.service.type` | Service type for UI (ClusterIP, NodePort, LoadBalancer) | `ClusterIP` |
-| `services.ui.service.nodePort` | Node port when service type is NodePort | `""` |
-| `services.ingest.service.type` | Service type for Ingest (ClusterIP, NodePort, LoadBalancer) | `ClusterIP` |
-| `services.ingest.service.nodePort` | Node port when service type is NodePort | `""` |
+
+### Service Configuration
+| Parameter | Description | Default |
+|-----------|-------------|---------|
 | `services.common.nodeSelector` | Node selector for all application services | `{}` |
 | `services.common.tolerations` | Tolerations for all application services | `[]` |
-| `clickhouse.nodeSelector` | Node selector for Clickhouse database | `{}` |
-| `clickhouse.tolerations` | Tolerations for Clickhouse database | `[]` |
+| `services.common.affinity` | Affinity rules for all application services | `{}` |
+| `services.common.env` | Environment variables for all application services | `{}` |
+| `services.common.hpa.enabled` | Enable HPA for all services (unless overridden) | `false` |
+| `services.common.hpa.minReplicas` | Default minimum replicas for HPA | `1` |
+| `services.common.hpa.maxReplicas` | Default maximum replicas for HPA | `5` |
+| `services.common.hpa.targetCPUUtilizationPercentage` | Default CPU target for HPA | `80` |
+
+### Individual Service Configuration
+Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) supports:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `services.<service>.nodeSelector` | Node selector (overrides common) | `{}` |
+| `services.<service>.tolerations` | Tolerations (overrides common) | `[]` |
+| `services.<service>.affinity` | Affinity rules (overrides common) | `{}` |
+| `services.<service>.env` | Environment variables (service-specific) | `{}` |
+| `services.<service>.replicas` | Number of replicas | `1` |
+| `services.<service>.resources` | CPU/memory requests and limits | varies |
+| `services.<service>.hpa.enabled` | Enable HPA for this service | `false` |
+| `services.<service>.hpa.minReplicas` | Minimum replicas for HPA | `1` |
+| `services.<service>.hpa.maxReplicas` | Maximum replicas for HPA | `5` |
+| `services.<service>.hpa.targetCPUUtilizationPercentage` | CPU target for HPA | `80` |
+
+### Gateway Service
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `services.gateway.service.type` | Service type (ClusterIP, NodePort, LoadBalancer) | `"ClusterIP"` |
+| `services.gateway.service.nodePort` | Node port when service type is NodePort | `""` |
+| `services.gateway.port` | Gateway HTTP port | `80` |
+| `services.gateway.adminPort` | Gateway admin port | `9901` |
+
+### Authentication
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `auth.basic.enabled` | Enable HTTP basic authentication | `false` |
+| `auth.basic.username` | Basic auth username (required when enabled) | `""` |
+| `auth.basic.password` | Basic auth password (required when enabled) | `""` |
+
+### Database Configuration
+
+#### ClickHouse
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `clickhouse.mode` | ClickHouse mode: "create" or "use_existing" | `"create"` |
+| `clickhouse.nodeSelector` | Node selector for ClickHouse database | `{}` |
+| `clickhouse.tolerations` | Tolerations for ClickHouse database | `[]` |
+| `clickhouse.affinity` | Affinity rules for ClickHouse database | `{}` |
+| `clickhouse.create.replicas` | Number of ClickHouse replicas | `1` |
+| `clickhouse.create.config.user` | ClickHouse username | `"clickhouse"` |
+| `clickhouse.create.config.password` | ClickHouse password | `"clickhouse123"` |
+| `clickhouse.create.config.database` | ClickHouse database prefix | `"zymtrace"` |
+| `clickhouse.use_existing.host` | External ClickHouse URL (http://host:8123) | `""` |
+| `clickhouse.use_existing.user` | External ClickHouse username | `""` |
+| `clickhouse.use_existing.password` | External ClickHouse password | `""` |
+| `clickhouse.use_existing.database` | External ClickHouse database prefix | `"zymtrace"` |
+| `clickhouse.use_existing.autoCreateDBs` | Auto-create databases on external ClickHouse | `false` |
+
+#### PostgreSQL
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `postgres.mode` | PostgreSQL mode: "create", "use_existing", or "gcp_cloudsql" | `"create"` |
 | `postgres.nodeSelector` | Node selector for PostgreSQL database | `{}` |
 | `postgres.tolerations` | Tolerations for PostgreSQL database | `[]` |
-| `postgres.use_existing.database` | Database name for existing PostgreSQL server | `postgres` |
-| `postgres.use_existing.autoCreateDBs` | Enable automatic database creation for existing PostgreSQL | `false` |
-| `postgres.gcp_cloudsql.instance` | Google Cloud SQL instance connection name (PROJECT:REGION:INSTANCE) | `""` |
-| `postgres.gcp_cloudsql.user` | Database user for Cloud SQL IAM authentication | `""` |
-| `postgres.gcp_cloudsql.database` | Database name in Cloud SQL | `postgres` |
-| `postgres.gcp_cloudsql.autoCreateDBs` | Enable automatic database creation for Cloud SQL | `false` |
-| `postgres.gcp_cloudsql.proxy.image.repository` | Cloud SQL Auth Proxy container image repository | `gcr.io/cloud-sql-connectors/cloud-sql-proxy` |
-| `postgres.gcp_cloudsql.proxy.image.tag` | Cloud SQL Auth Proxy container image tag | `2.11.0` |
-| `postgres.gcp_cloudsql.proxy.resources.requests.cpu` | CPU resource requests for Cloud SQL Auth Proxy | `100m` |
-| `postgres.gcp_cloudsql.proxy.resources.requests.memory` | Memory resource requests for Cloud SQL Auth Proxy | `128Mi` |
-| `postgres.gcp_cloudsql.proxy.resources.limits.cpu` | CPU resource limits for Cloud SQL Auth Proxy | `500m` |
-| `postgres.gcp_cloudsql.proxy.resources.limits.memory` | Memory resource limits for Cloud SQL Auth Proxy | `256Mi` |
-| `postgres.gcp_cloudsql.proxy.port` | Port for Cloud SQL Auth Proxy | `5432` |
-| `postgres.gcp_cloudsql.serviceAccount` | Kubernetes service account for Cloud SQL Auth Proxy | `""` |
+| `postgres.affinity` | Affinity rules for PostgreSQL database | `{}` |
+| `postgres.create.replicas` | Number of PostgreSQL replicas | `1` |
+| `postgres.create.config.user` | PostgreSQL username | `"postgres"` |
+| `postgres.create.config.password` | PostgreSQL password | `"postgres123"` |
+| `postgres.use_existing.host` | External PostgreSQL host:port | `""` |
+| `postgres.use_existing.user` | External PostgreSQL username | `""` |
+| `postgres.use_existing.password` | External PostgreSQL password | `""` |
+| `postgres.use_existing.database` | External PostgreSQL database prefix | `"zymtrace"` |
+| `postgres.use_existing.secure` | Enable TLS for external PostgreSQL | `false` |
+| `postgres.use_existing.autoCreateDBs` | Auto-create databases on external PostgreSQL | `false` |
+
+#### Google Cloud SQL
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `postgres.gcp_cloudsql.instance` | Cloud SQL instance (PROJECT:REGION:INSTANCE) | `""` |
+| `postgres.gcp_cloudsql.user` | Cloud SQL IAM user | `""` |
+| `postgres.gcp_cloudsql.database` | Cloud SQL database prefix | `"zymtrace"` |
+| `postgres.gcp_cloudsql.autoCreateDBs` | Auto-create databases on Cloud SQL | `false` |
+| `postgres.gcp_cloudsql.privateIP` | Use private IP connectivity | `false` |
+| `postgres.gcp_cloudsql.workloadIdentity.enabled` | Enable Workload Identity | `true` |
+| `postgres.gcp_cloudsql.proxy.port` | Cloud SQL Proxy port | `5432` |
+| `postgres.gcp_cloudsql.serviceAccount` | Kubernetes service account for Workload Identity | `""` |
+| `postgres.gcp_cloudsql.replicas` | Number of proxy replicas (when HPA disabled) | `1` |
+| `postgres.gcp_cloudsql.hpa.enabled` | Enable HPA for Cloud SQL proxy | `false` |
+
+#### Object Storage
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `storage.mode` | Storage mode: "create" or "use_existing" | `"create"` |
 | `storage.nodeSelector` | Node selector for MinIO object storage | `{}` |
 | `storage.tolerations` | Tolerations for MinIO object storage | `[]` |
-| `storage.mode` | Storage mode: "create" or "use_existing" | `"create"` |
-| `storage.use_existing.type` | Storage type: "minio", "s3", or "gcs" | `"minio"` |
+| `storage.affinity` | Affinity rules for MinIO object storage | `{}` |
+| `storage.create.replicas` | Number of MinIO replicas | `1` |
+| `storage.create.config.user` | MinIO access key | `"minio"` |
+| `storage.create.config.password` | MinIO secret key | `"minio123"` |
+| `storage.use_existing.type` | External storage type: "minio", "s3", or "gcs" | `"minio"` |
 | `storage.use_existing.minio.endpoint` | MinIO endpoint URL (must include http:// or https://) | `""` |
 | `storage.use_existing.minio.user` | MinIO access key | `""` |
 | `storage.use_existing.minio.password` | MinIO secret key | `""` |
@@ -214,6 +623,26 @@ Both sets of tolerations are necessary for initialization jobs (like zymtrace-mi
 | `storage.use_existing.gcs.accessKey` | GCS HMAC access key | `""` |
 | `storage.use_existing.gcs.secretKey` | GCS HMAC secret key | `""` |
 | `storage.buckets.symbols` | Symbol storage bucket name | `"zymtrace-symdb"` |
+
+### Global Symbolization
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `globalSymbolization.enabled` | Enable global symbolization service | `false` |
+| `globalSymbolization.config.bucketName` | Global symbolization bucket name | `""` |
+| `globalSymbolization.config.accessKey` | Global symbolization access key | `""` |
+| `globalSymbolization.config.secretKey` | Global symbolization secret key | `""` |
+| `globalSymbolization.config.region` | Global symbolization region | `""` |
+| `globalSymbolization.config.endpoint` | Global symbolization endpoint | `""` |
+
+### Ingress
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `ingress.enabled` | Enable ingress creation | `false` |
+| `ingress.className` | Ingress class name | `"nginx"` |
+| `ingress.annotations` | Ingress annotations | `{}` |
+| `ingress.hosts.gateway.enabled` | Enable gateway ingress | `true` |
+| `ingress.hosts.gateway.host` | Gateway hostname | `""` |
+| `ingress.tls` | TLS configuration | `[]` |
 
 ## Google Cloud SQL with IAM Authentication
 

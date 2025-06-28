@@ -20,6 +20,7 @@ spec:
     spec:
       {{- include "zymtrace.dbNodeSelector" (list "clickhouse" $) | nindent 6 }}
       {{- include "zymtrace.dbTolerations" (list "clickhouse" $) | nindent 6 }}
+      {{- include "zymtrace.dbAffinity" (list "clickhouse" $) | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "clickhouse") }}
           image: "{{ include "database.imageRegistry" . }}{{ .Values.clickhouse.create.image.repository }}:{{ .Values.clickhouse.create.image.tag }}"

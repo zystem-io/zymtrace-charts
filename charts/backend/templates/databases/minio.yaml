@@ -20,6 +20,7 @@ spec:
     spec:
       {{- include "zymtrace.dbNodeSelector" (list "storage" $) | nindent 6 }}
       {{- include "zymtrace.dbTolerations" (list "storage" $) | nindent 6 }}
+      {{- include "zymtrace.dbAffinity" (list "storage" $) | nindent 6 }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "minio") }}
           image: "{{ include "database.imageRegistry" . }}{{ .Values.storage.create.image.repository }}:{{ .Values.storage.create.image.tag }}"
@@ -104,6 +105,7 @@ spec:
     spec:
       {{- include "zymtrace.dbNodeSelector" (list "storage" $) | nindent 6 }}
       {{- include "zymtrace.dbTolerations" (list "storage" $) | nindent 6 }}
+      {{- include "zymtrace.dbAffinity" (list "storage" $) | nindent 6 }}
       initContainers:
         - name: wait-for-minio
           image: "{{ include "database.imageRegistry" . }}{{ .Values.storage.create.image.repository }}:{{ .Values.storage.create.image.tag }}"
