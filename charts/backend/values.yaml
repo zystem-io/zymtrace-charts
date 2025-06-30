@@ -117,7 +117,7 @@ postgres:
         memory: "512Mi"
       limits:
         cpu: "1000m"
-        memory: "1024Gi"
+        memory: "1Gi"
     storage:
       type: "persistent"
       size: 20Gi
@@ -293,7 +293,7 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "200m"
+        cpu: "500m"
         memory: "512Mi"
       limits:
         cpu: "4000m"
@@ -327,8 +327,8 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "200m"
-        memory: "256Mi"
+        cpu: "500m"
+        memory: "512Mi"
       limits:
         cpu: "4000m"
         memory: "4Gi"
@@ -360,8 +360,8 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "200m"
-        memory: "256Mi"
+        cpu: "500m"
+        memory: "512Mi"
       limits:
         cpu: "1000m"
         memory: "1Gi"
@@ -395,7 +395,7 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "100m"
+        cpu: "200m"
         memory: "256Mi"
       limits:
         cpu: "500m"
@@ -428,8 +428,8 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "100m"
-        memory: "256Mi"
+        cpu: "200m"
+        memory: "512Mi"
       limits:
         cpu: "500m"
         memory: "512Mi"
@@ -453,7 +453,7 @@ services:
       tag: ""
     resources:
       requests:
-        cpu: "100m"
+        cpu: "200m"
         memory: "256Mi"
       limits:
         cpu: "500m"
@@ -493,8 +493,8 @@ services:
     #  targetMemoryUtilizationPercentage: 80
     resources:
       requests:
-        cpu: "200m"
-        memory: "256Mi"
+        cpu: "500m"
+        memory: "512Mi"
       limits:
         cpu: "1000m"
         memory: "1Gi"
