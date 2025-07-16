@@ -53,7 +53,7 @@ profiler:
     # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
     # Override environment variables with: --set profiler.env.ZYMTRACE_COLLECTION_AGENT="your-service:80"
     
-    #ZYMTRACE_COLLECTION_AGENT: "zymtrace-gateway.zymtrace.svc.cluster.local:80" 
+    #ZYMTRACE_COLLECTION_AGENT: "zymtrace-ui.zymtrace.svc.cluster.local:80" 
     #ZYMTRACE_DISABLE_TLS: "true"
     # ZYMTRACE_TAGS: "region:us-west;env:prod"
     
