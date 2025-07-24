@@ -283,15 +283,24 @@ services:
       enabled: false  # Set to true to enable HPA for all services. Overide this common config in the service section below.
       minReplicas: 1
       maxReplicas: 10
-      targetCPUUtilizationPercentage: 80
-      targetMemoryUtilizationPercentage: 80
+      targetCPUUtilizationPercentage: 60
+      targetMemoryUtilizationPercentage: 70
       behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 160
+        scaleUp:
+          stabilizationWindowSeconds: 60
           policies:
-            - type: Percent
-              value: 100
-              periodSeconds: 15
+           - type: Percent
+             value: 50
+             periodSeconds: 60
+           - type: Pods
+             value: 2
+             periodSeconds: 60
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+           - type: Percent
+             value: 25
+             periodSeconds: 60
 
   ingest:
     image:
@@ -486,6 +495,9 @@ services:
     image:
       repository: zymtrace-backend
       tag: ""
+    # HPA is explicitly disabled for migration service to avoid/reduce the chance of anything bad happening if lock misbehaves
+    hpa:
+      enabled: false
     # Health probe overrides - takes precedence over common healthProbes settings
     #healthProbes:
     #  liveness: true   # Override common setting for this service

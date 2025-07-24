@@ -82,6 +82,8 @@ data:
   {{- if .Values.clickhouse.use_existing.clusterName }}
   INGEST__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
   INGEST__METRICS__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
+  WEB__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
+  WEB__METRICS__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
   #INGEST__CLICKHOUSE__SUPPORTS_DISTRIBUTED_ASYNC_INSERT: "false"
   #INGEST__METRICS__CLICKHOUSE__SUPPORTS_DISTRIBUTED_ASYNC_INSERT: "false"
   {{- end }}

@@ -42,16 +42,18 @@ spec:
             grpc:
               service: zymtrace.pb.symdb.v1.SymDb
               port: {{ .Values.services.symdb.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 15
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 5
           {{- end }}
           {{- if include "zymtrace.readinessProbeEnabled" (list $ "symdb") }}
           readinessProbe:
             grpc:
               service: zymtrace.pb.symdb.v1.SymDb
               port: {{ .Values.services.symdb.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 15
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
           {{- end }}
 ---
 apiVersion: v1
