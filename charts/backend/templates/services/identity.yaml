@@ -37,18 +37,22 @@ spec:
             {{- toYaml .Values.services.identity.resources | nindent 12 }}
             
           {{- include "zymtrace.serviceEnvConfig" (list $ "identity") | nindent 10 }}
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "identity") }}
           livenessProbe:
             grpc:
               service: zymtrace.pb.identity.v1.IdentityService
               port: {{ .Values.services.identity.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "identity") }}
           readinessProbe:
             grpc:
               service: zymtrace.pb.identity.v1.IdentityService
               port: {{ .Values.services.identity.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

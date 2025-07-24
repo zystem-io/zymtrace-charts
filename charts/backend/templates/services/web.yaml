@@ -37,18 +37,22 @@ spec:
             {{- toYaml .Values.services.web.resources | nindent 12 }}
           {{- include "zymtrace.serviceEnvConfig" (list $ "web") | nindent 10 }}
     
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "web") }}
           livenessProbe:
             httpGet:
               path: /liveness
               port: {{ .Values.services.web.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "web") }}
           readinessProbe:
             httpGet:
               path: /readiness
               port: {{ .Values.services.web.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

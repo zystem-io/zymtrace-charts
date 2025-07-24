@@ -37,18 +37,22 @@ spec:
             {{- toYaml .Values.services.symdb.resources | nindent 12 }}
             
           {{- include "zymtrace.serviceEnvConfig" (list $ "symdb") | nindent 10 }}
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "symdb") }}
           livenessProbe:
             grpc:
               service: zymtrace.pb.symdb.v1.SymDb
               port: {{ .Values.services.symdb.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "symdb") }}
           readinessProbe:
             grpc:
               service: zymtrace.pb.symdb.v1.SymDb
               port: {{ .Values.services.symdb.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

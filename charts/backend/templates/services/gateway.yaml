@@ -36,6 +36,9 @@ spec:
             - name: admin
               containerPort: {{ .Values.services.gateway.adminPort }}
               protocol: TCP
+            - name: mtls
+              containerPort: {{ .Values.services.gateway.mtls.port }}
+              protocol: TCP
           env:
             {{- if .Values.auth.basic.enabled }}
             - name: UI_USER
@@ -46,6 +49,15 @@ spec:
           {{- include "zymtrace.gatewayServiceEnvConfig" (list $ "gateway") | nindent 10 }}
           resources:
             {{- toYaml .Values.services.gateway.resources | nindent 12 }}
+
+          {{- if .Values.services.gateway.mtls.enabled }}
+          volumeMounts:
+            - name: {{ include "zymtrace.resourceName" (list $ "gateway-mtls") }}
+              mountPath: "/etc/envoy/certs"
+              readOnly: true
+          {{- end }}
+
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "gateway") }}
           livenessProbe:
             httpGet:
               path: /ready
@@ -53,6 +65,8 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 3
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "gateway") }}
           readinessProbe:
             httpGet:
               path: /ready
@@ -60,6 +74,15 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 15
             failureThreshold: 2
+          {{- end }}
+          
+      {{- if .Values.services.gateway.mtls.enabled }}
+      volumes:
+        - name: {{ include "zymtrace.resourceName" (list $ "gateway-mtls") }}
+          secret:
+            secretName: {{ include "zymtrace.resourceName" (list $ "gateway-mtls") }}
+      {{- end }}
+
 ---
 apiVersion: v1
 kind: Service
@@ -83,6 +106,12 @@ spec:
       targetPort: admin
       protocol: TCP
       name: admin
+    {{- if .Values.services.gateway.mtls.enabled }}
+    - name: mtls
+      port: {{ .Values.services.gateway.mtls.port }}
+      targetPort: {{ .Values.services.gateway.mtls.port }}
+      protocol: TCP
+    {{- end }}
   selector:
     app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
 ---

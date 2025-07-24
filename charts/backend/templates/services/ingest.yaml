@@ -38,18 +38,22 @@ spec:
             
           {{- include "zymtrace.serviceEnvConfig" (list $ "ingest") | nindent 10 }}
 
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "ingest") }}
           livenessProbe:
             grpc:
               service: opentelemetry.proto.collector.profiles.v1development.ProfilesService
               port: {{ .Values.services.ingest.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "ingest") }}
           readinessProbe:
             grpc:
               service: opentelemetry.proto.collector.profiles.v1development.ProfilesService
               port: {{ .Values.services.ingest.port }}
             initialDelaySeconds: 10
             periodSeconds: 15
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

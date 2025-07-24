@@ -36,7 +36,7 @@ spec:
               containerPort: {{ .Values.storage.create.service.api.port }}
             - name: console
               containerPort: {{ .Values.storage.create.service.console.port }}
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.minioEnvConfig" . | nindent 10 }}
           volumeMounts:
             - name: data
               mountPath: /data
@@ -118,7 +118,7 @@ spec:
                 echo "Waiting for MinIO to be ready..."
                 sleep 5
               done
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.minioEnvConfig" . | nindent 10 }}
       containers:
         - name: create-buckets
           image: "{{ include "database.imageRegistry" . }}{{ .Values.storage.create.image.repository }}:{{ .Values.storage.create.image.tag }}"
@@ -131,6 +131,6 @@ spec:
               echo "Creating the symbols buckets..."
               mc mb myminio/{{ .Values.storage.buckets.symbols }} || echo "Bucket {{ .Values.storage.buckets.symbols }} already exists"
               echo "Bucket initialization completed"
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.minioEnvConfig" . | nindent 10 }}
       restartPolicy: OnFailure
 {{- end }}

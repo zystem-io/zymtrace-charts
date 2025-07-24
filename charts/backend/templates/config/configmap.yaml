@@ -44,6 +44,7 @@ data:
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   INGEST__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_profiling"
+
   #metrics
   INGEST__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   INGEST__METRICS__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
@@ -56,7 +57,9 @@ data:
   WEB__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.create.config.user }}"
   WEB__METRICS__CLICKHOUSE__ADDR: "http://{{ include "zymtrace.resourceName" (list $ "clickhouse") }}:{{ .Values.clickhouse.create.service.http.port }}"
   WEB__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.create.config.database }}_metrics"
+
   {{- else }}
+
   INGEST__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   INGEST__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
   INGEST__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_profiling"
@@ -74,6 +77,15 @@ data:
   WEB__METRICS__CLICKHOUSE__USERNAME: "{{ .Values.clickhouse.use_existing.user }}"
   WEB__METRICS__CLICKHOUSE__ADDR: "{{ .Values.clickhouse.use_existing.host }}"
   WEB__METRICS__CLICKHOUSE__DATABASE: "{{ .Values.clickhouse.use_existing.database }}_metrics"
+
+  # Distributed CH envs
+  {{- if .Values.clickhouse.use_existing.clusterName }}
+  INGEST__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
+  INGEST__METRICS__CLICKHOUSE__CLUSTER_NAME: "{{ .Values.clickhouse.use_existing.clusterName }}"
+  #INGEST__CLICKHOUSE__SUPPORTS_DISTRIBUTED_ASYNC_INSERT: "false"
+  #INGEST__METRICS__CLICKHOUSE__SUPPORTS_DISTRIBUTED_ASYNC_INSERT: "false"
+  {{- end }}
+
   {{- end }}
 
   # Service configurations - Postgres
@@ -110,7 +122,7 @@ data:
   SYMDB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
   WEB__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.port }}"
   WEB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
-  
+
   # Event TTL.
   INGEST__EVENT_TTL_HOURS: {{ (mul .Values.global.dataRetentionDays 24) | quote }}
 
@@ -152,79 +164,5 @@ data:
   {{- if hasKey .Values.services "common" }}
   {{- if hasKey .Values.services.common "env" }}
   {{- include "zymtrace.commonEnvVars" . | nindent 2 }}
-  {{- end }}
-  {{- end }}
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "zymtrace.resourceName" (list $ "secrets") }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "zymtrace.labels" . | nindent 4 }}
-type: Opaque
-stringData:
-  {{- if eq .Values.clickhouse.mode "create" }}
-  CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
-  INGEST__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
-  #metrics
-  INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
-
-  WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
-  WEB__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.create.config.password | quote }}
-  {{- else }}
-  CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
-  INGEST__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
-
-  #metrics
-  INGEST__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
-
-  WEB__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
-  WEB__METRICS__CLICKHOUSE__PASSWORD: {{ .Values.clickhouse.use_existing.password | quote }}
-  {{- end }}
-
-  {{- if eq .Values.postgres.mode "create" }}
-  # Postgres doesn't like using `data` directly on GKE due to presence of `lost+found` directory.
-  PGDATA: "/var/lib/postgresql/data/pgdata"
-  POSTGRES_PASSWORD: {{ .Values.postgres.create.config.password | quote }}
-  IDENTITY__POSTGRES__PASSWORD: {{ .Values.postgres.create.config.password | quote }}
-  SYMDB__POSTGRES__PASSWORD: {{ .Values.postgres.create.config.password | quote }}
-  {{- else if eq .Values.postgres.mode "gcp_cloudsql" }}
-  # For Cloud SQL with IAM authentication, no password is needed as we use the IAM proxy
-  IDENTITY__POSTGRES__PASSWORD: ""
-  SYMDB__POSTGRES__PASSWORD: ""
-  {{- else }}
-  POSTGRES_PASSWORD: {{ .Values.postgres.use_existing.password | quote }}
-  IDENTITY__POSTGRES__PASSWORD: {{ .Values.postgres.use_existing.password | quote }}
-  SYMDB__POSTGRES__PASSWORD: {{ .Values.postgres.use_existing.password | quote }}
-  {{- end }}
-
-  {{- if eq .Values.storage.mode "create" }}
-  MINIO_ROOT_USER: {{ .Values.storage.create.config.user | quote }}
-  MINIO_ROOT_PASSWORD: {{ .Values.storage.create.config.password | quote }}
-  SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID: {{ .Values.storage.create.config.user | quote }}
-  SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY: {{ .Values.storage.create.config.password | quote }}
-  {{- else if eq .Values.storage.use_existing.type "minio" }}
-  SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID: {{ .Values.storage.use_existing.minio.user | quote }}
-  SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY: {{ .Values.storage.use_existing.minio.password | quote }}
-  {{- else if eq .Values.storage.use_existing.type "s3" }}
-  SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID: {{ .Values.storage.use_existing.s3.accessKey | quote }}
-  SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY: {{ .Values.storage.use_existing.s3.secretKey | quote }}
-  {{- if .Values.storage.use_existing.s3.sessionToken }}
-  SYMDB__SYMBOL_BUCKET__AWS_SESSION_TOKEN: {{ .Values.storage.use_existing.s3.sessionToken | quote }}
-  {{- end }}
-  {{- else if eq .Values.storage.use_existing.type "gcs" }}
-  SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID: {{ .Values.storage.use_existing.gcs.accessKey | quote }}
-  SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY: {{ .Values.storage.use_existing.gcs.secretKey | quote }}
-  {{- end }}
-
-  # Global symbolization credentials
-  {{- if .Values.globalSymbolization.enabled }}
-  {{- if .Values.globalSymbolization.config.accessKey }}
-  SYMDB__GLOBAL_SYM_ENDPOINT__AWS_ACCESS_KEY_ID: {{ .Values.globalSymbolization.config.accessKey | quote }}
-  {{- end }}
-  {{- if .Values.globalSymbolization.config.secretKey }}
-  SYMDB__GLOBAL_SYM_ENDPOINT__AWS_SECRET_ACCESS_KEY: {{ .Values.globalSymbolization.config.secretKey | quote }}
   {{- end }}
   {{- end }}

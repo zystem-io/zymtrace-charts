@@ -31,7 +31,7 @@ spec:
               containerPort: {{ .Values.clickhouse.create.service.http.port }}
             - name: native
               containerPort: {{ .Values.clickhouse.create.service.native.port }}
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.clickhouseEnvConfig" . | nindent 10 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/clickhouse

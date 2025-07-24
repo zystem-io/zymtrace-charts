@@ -53,17 +53,6 @@ imagePullSecrets:
 {{- end }}
 
 {{/*
-Common environment configuration
-*/}}
-{{- define "zymtrace.envConfig" -}}
-envFrom:
-  - configMapRef:
-      name: {{ include "zymtrace.resourceName" (list . "config") }}
-  - secretRef:
-      name: {{ include "zymtrace.resourceName" (list . "secrets") }}
-{{- end }}
-
-{{/*
 Gateway environment configuration (includes gateway-specific ConfigMap)
 */}}
 {{- define "zymtrace.gatewayEnvConfig" -}}
@@ -72,8 +61,39 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list . "gateway-config") }}
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list . "config") }}
+{{- end }}
+
+{{/*
+ClickHouse database environment configuration  
+*/}}
+{{- define "zymtrace.clickhouseEnvConfig" -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list . "config") }}
   - secretRef:
-      name: {{ include "zymtrace.resourceName" (list . "secrets") }}
+      name: {{ include "zymtrace.resourceName" (list . "clickhouse-secrets") }}
+{{- end }}
+
+{{/*
+PostgreSQL database environment configuration  
+*/}}
+{{- define "zymtrace.postgresEnvConfig" -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list . "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list . "postgres-secrets") }}
+{{- end }}
+
+{{/*
+MinIO database environment configuration  
+*/}}
+{{- define "zymtrace.minioEnvConfig" -}}
+envFrom:
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list . "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list . "minio-secrets") }}
 {{- end }}
 
 {{/*
@@ -86,8 +106,30 @@ Service environment configuration with individual service environment variables
 envFrom:
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
+{{- if or (eq $service "ingest") (eq $service "web") }}
   - secretRef:
-      name: {{ include "zymtrace.resourceName" (list $root "secrets") }}
+      name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}
+{{- end }}
+{{- if or (eq $service "identity") (eq $service "symdb") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "postgres-secrets") }}
+{{- end }}
+{{- if eq $service "migrate" }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "postgres-secrets") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "storage-secrets") }}
+{{- end }}
+{{- if eq $service "symdb" }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "storage-secrets") }}
+{{- if $root.Values.globalSymbolization.enabled }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "global-symbolization-secrets") }}
+{{- end }}
+{{- end }}
 {{- if $serviceConfig.env }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
@@ -109,8 +151,6 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "gateway-config") }}
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
-  - secretRef:
-      name: {{ include "zymtrace.resourceName" (list $root "secrets") }}
 {{- if $serviceConfig.env }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
@@ -346,4 +386,36 @@ affinity:
 affinity:
   {{- toYaml (index $root.Values $component "affinity") | nindent 2 }}
 {{- end }}
+{{- end }}
+
+{{/* Check if liveness probe is enabled for a service */}}
+{{- define "zymtrace.livenessProbeEnabled" -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+{{- $serviceLiveness := $root.Values.services.healthProbes.liveness -}}
+{{- if hasKey $serviceConfig "healthProbes" -}}
+{{- if and $serviceConfig.healthProbes (kindIs "map" $serviceConfig.healthProbes) -}}
+{{- if hasKey $serviceConfig.healthProbes "liveness" -}}
+{{- $serviceLiveness = $serviceConfig.healthProbes.liveness -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $serviceLiveness -}}true{{- end -}}
+{{- end }}
+
+{{/* Check if readiness probe is enabled for a service */}}
+{{- define "zymtrace.readinessProbeEnabled" -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $serviceConfig := index $root.Values.services $service -}}
+{{- $serviceReadiness := $root.Values.services.healthProbes.readiness -}}
+{{- if hasKey $serviceConfig "healthProbes" -}}
+{{- if and $serviceConfig.healthProbes (kindIs "map" $serviceConfig.healthProbes) -}}
+{{- if hasKey $serviceConfig.healthProbes "readiness" -}}
+{{- $serviceReadiness = $serviceConfig.healthProbes.readiness -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $serviceReadiness -}}true{{- end -}}
 {{- end }}

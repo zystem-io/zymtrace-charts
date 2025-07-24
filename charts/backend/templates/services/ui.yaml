@@ -37,18 +37,22 @@ spec:
             
           {{- include "zymtrace.serviceEnvConfig" (list $ "ui") | nindent 10 }}
 
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "ui") }}
           livenessProbe:
             httpGet:
               path: /index.html
               port: {{ .Values.services.ui.port }}
             initialDelaySeconds: 15
             periodSeconds: 120
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "ui") }}
           readinessProbe:
             httpGet:
               path: /index.html
               port: {{ .Values.services.ui.port }}
             initialDelaySeconds: 15
             periodSeconds: 120
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

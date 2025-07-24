@@ -18,3 +18,10 @@ data:
   WEB_CLUSTER_PORT: "{{ .Values.services.web.port }}"
   UI_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "ui") }}.{{ .Release.Namespace }}.svc.cluster.local
   UI_CLUSTER_PORT: "{{ .Values.services.ui.port }}"
+
+  {{- if .Values.services.gateway.mtls.enabled }}
+  SERVER_CERT_PATH: "/etc/envoy/certs/tls.crt"
+  SERVER_KEY_PATH: "/etc/envoy/certs/tls.key"
+  CA_CERT_PATH: "/etc/envoy/certs/ca.crt"
+  LISTENER_MTLS_PORT: "{{ .Values.services.gateway.mtls.port }}"
+  {{- end }}

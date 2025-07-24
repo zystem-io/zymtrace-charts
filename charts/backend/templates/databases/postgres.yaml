@@ -29,7 +29,7 @@ spec:
           ports:
             - name: psql
               containerPort: {{ .Values.postgres.create.service.port }}
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.postgresEnvConfig" . | nindent 10 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data

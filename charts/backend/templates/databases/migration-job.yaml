@@ -27,6 +27,9 @@ spec:
       {{- include "zymtrace.tolerations" (list $ "migrate") | nindent 6 }}
       {{- include "zymtrace.affinity" (list $ "migrate") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      {{- if eq .Values.postgres.mode "gcp_cloudsql" }}
+      serviceAccountName: {{ .Values.postgres.gcp_cloudsql.serviceAccount }}
+      {{- end }}
       initContainers:
         {{- if eq .Values.clickhouse.mode "create" }}
         - name: wait-for-clickhouse
@@ -45,7 +48,7 @@ spec:
                 sleep 5
               done
               echo "Clickhouse is ready."
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list . "migrate") | nindent 10 }}
         {{- end }}
 
         {{- if eq .Values.postgres.mode "create" }}
@@ -65,7 +68,29 @@ spec:
                 sleep 5
               done
               echo "Postgres is ready."
-          {{- include "zymtrace.envConfig" . | nindent 10 }}
+          {{- include "zymtrace.serviceEnvConfig" (list . "migrate") | nindent 10 }}
+        {{- end }}
+
+        {{- if eq .Values.postgres.mode "gcp_cloudsql" }}
+        - name: wait-for-gcp-cloudsql
+          image: "{{ include "database.imageRegistry" . }}{{ .Values.postgres.create.image.repository }}:{{ .Values.postgres.create.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for GCP CloudSQL proxy to be ready..."
+              until psql \
+                -h {{ include "zymtrace.resourceName" (list $ "postgres") }} \
+                -p {{ .Values.postgres.gcp_cloudsql.proxy.port }} \
+                -U {{ .Values.postgres.gcp_cloudsql.user | quote }} \
+                -d postgres \
+                -c "SELECT 1"; do
+                echo "Waiting for GCP CloudSQL proxy to be ready..."
+                sleep 5
+              done
+              echo "GCP CloudSQL proxy is ready."
+          {{- include "zymtrace.serviceEnvConfig" (list . "migrate") | nindent 10 }}
         {{- end }}
       containers:
         - name: migrate

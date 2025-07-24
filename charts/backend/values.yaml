@@ -79,8 +79,14 @@ clickhouse:
   use_existing:
     host: ""  # Must include protocol and port: http://myhost:8123 or https://myhost:8443
               # NOTE: Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
+    user: ""
     password: ""
     database: "zymtrace" # This is used as the DB prefix, so the actual databases will be `zymtrace_profiling` and `zymtrace_metrics `.
+    clusterName: "" # Optional: ClickHouse cluster name for distributed setups (e.g., "zymtrace_cluster").
+                     # Required when using ClickHouse clusters with multiple shards/replicas.
+                     # When enabled, we use the ON CLUSTER macro for distributed queries across cluster nodes.
+                     # Leave empty for ClickHouse Cloud or single-node ClickHouse instances.
+
     autoCreateDBs: false  # When true, sets INGEST__CLICKHOUSE__AUTO_CREATE_DBS=true and INGEST__METRICS__CLICKHOUSE__AUTO_CREATE_DBS=true
     # NOTE: For autoCreateDBs to work, the database user must have CREATE DATABASE permission
 
@@ -226,6 +232,15 @@ storage:
 # Application Services
 services:
   activateNetworkPolicies: true  # Dev CNIs like standard Flannel doesn't support NetworkPolicies. zymtrace will still create it, but it won't be enforced. 
+  healthProbes:
+    # NOTE: If you're using managed services such as ClickHouse, Postgres, and if there's loss in connection to the dependent services, 
+    # there's a high chance that liveness probe will kill and restart the pod. So if this is enabled and you're seeing multiple 
+    # restarts of pods, double check the health of the dependent services.
+    # 
+    # These are global settings that apply to all services unless overridden at the service level.
+    # Individual services can override these settings by uncommenting their own healthProbes section.
+    liveness: false  # Set to true to enable liveness probes for all services
+    readiness: false  # Set to true to enable readiness probes for all services
   common:
     imageTag: ""
     nodeSelector: {}
@@ -291,6 +306,10 @@ services:
     #  targetCPUUtilizationPercentage: 80
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "500m"
@@ -325,6 +344,10 @@ services:
     #  targetCPUUtilizationPercentage: 80
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "500m"
@@ -358,6 +381,10 @@ services:
     #  targetCPUUtilizationPercentage: 80
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "500m"
@@ -393,6 +420,10 @@ services:
     #  targetCPUUtilizationPercentage: 70
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "200m"
@@ -426,6 +457,10 @@ services:
     #  targetCPUUtilizationPercentage: 80
     #  maxReplicas: 5
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "200m"
@@ -451,6 +486,10 @@ services:
     image:
       repository: zymtrace-backend
       tag: ""
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "200m"
@@ -491,6 +530,10 @@ services:
     #  maxReplicas: 8
     #  targetCPUUtilizationPercentage: 75
     #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
     resources:
       requests:
         cpu: "500m"
@@ -511,6 +554,59 @@ services:
       # LOG_LEVEL: "debug"
     affinity: {}
       # Individual service affinity takes precedence over common affinity
+
+
+    # mTLS configuration for Gateway service
+     # IMPORTANT: SSL Passthrough must be enabled on your NGINX ingress controller for this work.
+     # 
+     # To check if SSL passthrough is enabled:
+     #   kubectl get deployment nginx-controller -n ingress-nginx -o yaml | grep "enable-ssl-passthrough"
+     # 
+     # To enable SSL passthrough if not already enabled:
+     #   Method 1 - Via ConfigMap (immediate, no restart required):
+     #     kubectl patch configmap nginx-configuration -n ingress-nginx --patch '{"data":{"enable-ssl-passthrough":"true"}}'
+     #   Method 2 - Via Helm (if installed via Helm):
+     #     helm upgrade nginx-ingress ingress-nginx/ingress-nginx -n ingress-nginx --set controller.extraArgs.enable-ssl-passthrough=true
+     #
+     # For other ingress controllers, consult their documentation for SSL passthrough configuration.
+    mtls:
+      enabled: false
+      # mTLS (Mutual TLS) Configuration for Gateway
+      # 
+      # mTLS provides bidirectional authentication where both client and server authenticate each other using certificates.
+      # This configuration sets up the Gateway as the TLS server that requires client certificate authentication.
+      # Please provide certificates in plain text format (PEM). They will be automatically base64 encoded in the Kubernetes secret.
+      # You can use --set-file to load certificates from files:
+      # --set-file services.gateway.mtls.cert=path/to/server.crt
+      # --set-file services.gateway.mtls.key=path/to/server.key
+      # --set-file services.gateway.mtls.ca=path/to/ca.crt
+      cert: |
+        # Server Certificate (PEM format)
+        # This is the Gateway's server certificate that identifies the Gateway to connecting clients.
+        # Example format:
+        # -----BEGIN CERTIFICATE-----
+        # MIIBrDCCAVKgAwIBAgIUb7Y7r6OKgiFlnu6Zk0KN9qI6eZcwCgYIKoZIzj0EAwIw
+        # ...certificate content...
+        # -----END CERTIFICATE-----
+      key: |
+        # Server Private Key (PEM format)
+        # This is the private key that corresponds to the server certificate above.
+        # Example format:
+        # -----BEGIN EC PRIVATE KEY-----
+        # MHcCAQEEIAwLRT16LE6S6TT5PIHWhUNoQOwugrcMRIg/rH0nv7VyoAoGCCqGSM49
+        # ...private key content...
+        # -----END EC PRIVATE KEY-----
+        # 
+        # Note: Key format may vary (RSA PRIVATE KEY, EC PRIVATE KEY, PRIVATE KEY, etc.)
+      ca: |
+        # Certificate Authority (CA) Certificate (PEM format)
+        # This CA certificate is used to verify and validate client certificates during mTLS authentication.
+        # Example format:
+        # -----BEGIN CERTIFICATE-----
+        # MIIBmTCCAT+gAwIBAgIUJylhF5Ixs2HWI9i+7kLzPxdoPQQwCgYIKoZIzj0EAwIw
+        # ...ca certificate content...
+        # -----END CERTIFICATE-----
+      port: 9090
 
 # Configuration for exposing services through ingress
 # NOTE: The Gateway serves as the main entry point and routes traffic to all backend services including the UI.# The Gateway is designed to be the external-facing service, while UI is accessed through the Gateway.
@@ -548,6 +644,7 @@ ingress:
 
  hosts:
    gateway:
+     # Primary gateway ingress - always available when ingress is enabled
      enabled: true
      host: "" # e.g zymtrace.company.com
      paths:
@@ -563,6 +660,29 @@ ingress:
        #
        # For AWS ALB:
        # alb.ingress.kubernetes.io/max-request-body-size: "0"  # 10737418240
+
+     # mTLS gateway ingress - only available when services.gateway.mtls.enabled is true
+     # Requires SSL passthrough and client certificate authentication
+     # 
+    
+     mtls:
+       enabled: false
+       host: "" # e.g mtls.zymtrace.company.com - should be different from main gateway host
+       paths:
+         - path: /
+           pathType: Prefix
+       annotations: {}
+         # Required annotations for NGINX ingress with mTLS:
+         # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+         # nginx.ingress.kubernetes.io/proxy-body-size: "0"
+         # nginx.ingress.kubernetes.io/client-body-buffer-size: "1M"
+         #
+         # For Traefik ingress with mTLS:
+         # traefik.ingress.kubernetes.io/router.tls.passthrough: "true"
+         # traefik.ingress.kubernetes.io/service.serversscheme: "https"
+         #
+         # For AWS ALB ingress with mTLS:
+         # NOTE: AWS ALB doesn't support SSL passthrough like NGINX. 
 
  # TLS config example:
  # tls:
