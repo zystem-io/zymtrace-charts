@@ -13,10 +13,19 @@ global:
   skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
   enableServiceMigration: false  # When true: uses pre-upgrade hooks for service migration. When false: standard ClusterIP services (default)
 
-
-# This enables HTTP basic authentication for the Gateway service, which provides access to the UI and other backend services.
-# The Gateway serves as the main entry point and handles authentication for all routed traffic.
 auth:
+  services:
+    # When set to a string, this authentication token is used to authenticate
+    # requests between zymtrace services as well as the profiler. Example command
+    # to generate a token:
+    #
+    # openssl rand -base64 24 | tr -d "=+/" | cut -c1-48
+    #
+    # The token must then also be passed to the profiler via the `-auth-token yourtoken` argument.
+    token: null
+
+  # This enables HTTP basic authentication for the Gateway service, which provides access to the UI and other backend services.
+  # The Gateway serves as the main entry point and handles authentication for all routed traffic.
   basic:
     enabled: false   # Set to true to enable basic authentication
     username: ""     # Required when enabled 

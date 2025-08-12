@@ -41,7 +41,6 @@ spec:
             - name: sys-kernel-debug
               mountPath: /sys/kernel/debug
               readOnly: true
-              readOnly: true
             {{- if .Values.profiler.cudaProfiler.enabled }}
             # Mount the target directory for CUDA profiler
             - name: zymtrace-cuda-profiler

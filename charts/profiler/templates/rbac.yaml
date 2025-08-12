@@ -33,7 +33,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: {{ include "zymtrace.resourceName" (list . "profiler") }}
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
 roleRef:
   kind: ClusterRole
   name: {{ include "zymtrace.resourceName" (list . "profiler") }}

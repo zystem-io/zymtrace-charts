@@ -106,6 +106,8 @@ Service environment configuration with individual service environment variables
 envFrom:
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "auth-token-secrets") }}
 {{- if or (eq $service "ingest") (eq $service "web") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}

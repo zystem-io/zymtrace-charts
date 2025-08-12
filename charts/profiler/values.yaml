@@ -48,6 +48,7 @@ profiler:
     # - "-v"
     # - "-dwarf"
     # - "-zymtrace-protocol"
+    # - "-auth-token=mycustomauthtoken"
   # Note: CLI args take precedence over environment variables
   env:
     # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
