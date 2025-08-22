@@ -16,7 +16,7 @@ metadata:
     "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation"
 spec:
   ttlSecondsAfterFinished: 100  # Clean up completed jobs after some time
-  activeDeadlineSeconds: 180  # 3 minutes timeout
+  activeDeadlineSeconds: 600  # 10 minutes timeout
   backoffLimit: 2
   template:
     metadata:
