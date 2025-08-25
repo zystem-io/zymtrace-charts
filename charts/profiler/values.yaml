@@ -11,7 +11,6 @@ global:
 
 rbac:
   create: true
-  skipExisting: true # Set to false to force create Service Account regardless of whether it exists
   rules:
     - apiGroups: [""]
       resources: ["nodes", "pods"]
