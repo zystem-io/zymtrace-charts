@@ -141,6 +141,8 @@ postgres:
     host: "" # host:port
     user: ""
     password: ""
+    useIAM: null # If set, ignore `password` and authenticate via IAM. Valid values: null, "aws"
+    awsRegion: null # Override the default region when using IAM.
     database: "zymtrace"  # This used as the DB prefix, so the actual databases will be `zymtrace_identity` and `zymtrace_symdb`.
     secure: false  # Enable TLS/secure connection
     autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
@@ -230,7 +232,8 @@ storage:
     s3:
       region: ""
       accessKey: ""
-      secretKey: ""
+      secretKey: "" 
+      useIAM: null # If set, ignore `accessKey` + `secretKey` and authenticate via IAM. Valid values: null, "aws"
     gcs:
       endpoint: "https://storage.googleapis.com" # GCS endpoint, defaults to https://storage.googleapis.com
       accessKey: ""

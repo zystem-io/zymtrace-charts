@@ -49,28 +49,31 @@ spec:
               echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
               echo "Endpoint: ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
               zymtrace-cli check-bucket \
-                --bucket-name {{ .Values.storage.buckets.symbols }} \
-                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
-                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
-                --aws-endpoint ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}
+                --bucket-name {{ .Values.storage.buckets.symbols | quote }} \
+                --aws-access-key-id "${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID}" \
+                --aws-secret-access-key "${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY}" \
+                --aws-endpoint "${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
               {{- else if eq .Values.storage.use_existing.type "gcs" }}
               echo "Storage Type: GCS"
               echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
               echo "Endpoint: ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
               zymtrace-cli check-bucket \
-                --bucket-name {{ .Values.storage.buckets.symbols }} \
-                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
-                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
-                --aws-endpoint ${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}
+                --bucket-name {{ .Values.storage.buckets.symbols | quote }} \
+                --aws-access-key-id "${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID}" \
+                --aws-secret-access-key "${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY}" \
+                --aws-endpoint "${SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT}"
               {{- else }}
               echo "Storage Type: S3"
-              echo "Bucket Name: {{ .Values.storage.buckets.symbols }}"
+              echo "Bucket Name: {{ .Values.storage.buckets.symbols | quote }}"
               echo "Region: ${SYMDB__SYMBOL_BUCKET__AWS_REGION}"
               zymtrace-cli check-bucket \
-                --bucket-name {{ .Values.storage.buckets.symbols }} \
-                --aws-access-key-id ${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID} \
-                --aws-secret-access-key ${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY} \
-                --aws-region ${SYMDB__SYMBOL_BUCKET__AWS_REGION} 
+                --bucket-name {{ .Values.storage.buckets.symbols | quote }} \
+                --aws-access-key-id "${SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID}" \
+                --aws-secret-access-key "${SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY}" \
+                {{- if .Values.storage.use_existing.s3.useIAM }}
+                --use-iam "${SYMDB__SYMBOL_BUCKET__USE_IAM}" \
+                {{- end }}
+                --aws-region "${SYMDB__SYMBOL_BUCKET__AWS_REGION}"
               {{- end }}
               
               CHECK_STATUS=$?

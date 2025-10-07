@@ -135,7 +135,11 @@ data:
   {{- else if eq .Values.storage.use_existing.type "minio" }}
   SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT: {{ .Values.storage.use_existing.minio.endpoint | quote }}
   {{- else if eq .Values.storage.use_existing.type "s3" }}
+  SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT: "https://s3.dualstack.{{ .Values.storage.use_existing.s3.region }}.amazonaws.com"
   SYMDB__SYMBOL_BUCKET__AWS_REGION: {{ .Values.storage.use_existing.s3.region | quote }}
+  {{- if .Values.storage.use_existing.s3.useIAM }}
+  SYMDB__SYMBOL_BUCKET__USE_IAM: {{ .Values.storage.use_existing.s3.useIAM | quote }}
+  {{- end }}
   {{- else if eq .Values.storage.use_existing.type "gcs" }}
   SYMDB__SYMBOL_BUCKET__AWS_ENDPOINT: {{ .Values.storage.use_existing.gcs.endpoint | default "https://storage.googleapis.com" | quote }}
   {{- end }}
