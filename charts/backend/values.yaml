@@ -10,8 +10,11 @@ global:
     password: "" # Required: provide via --set
   imagePullPolicy: IfNotPresent
   dataRetentionDays: 30  # Default retention period in days. 0 = forever.
+  enableServiceMigration: false # When true: uses pre-upgrade hooks for service migration. When false: standard ClusterIP services (default)
   skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
-  enableServiceMigration: false  # When true: uses pre-upgrade hooks for service migration. When false: standard ClusterIP services (default)
+  skipDBMigrations: false  # Set to true to skip running database migrations during install/upgrade (useful for quick rollbacks or when migrations are not needed)
+  skipPostgresMigration: false  # Set to true to skip PostgreSQL migrations specifically (sets SKIP_PSQL_MIGRATE=true)
+  skipClickHouseMigration: false  # Set to true to skip ClickHouse migrations specifically (sets SKIP_CH_MIGRATE=true)
 
 auth:
   services:
@@ -507,6 +510,8 @@ services:
     image:
       repository: zymtrace-backend
       tag: ""
+    # Timeout for migration job in seconds (default: 3600 = 1 hour)
+    timeoutSeconds: 3600
     # HPA is explicitly disabled for migration service to avoid/reduce the chance of anything bad happening if lock misbehaves
     hpa:
       enabled: false
