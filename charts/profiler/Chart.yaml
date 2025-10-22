@@ -2,8 +2,8 @@ apiVersion: v2
 name: profiler
 description: Deploy zymtrace's profiler agent
 type: application
-version: 25.10.8
-appVersion: "25.10.8"
+version: 25.10.10
+appVersion: "25.10.10"
 keywords:
   - zymtrace
   - profiler
