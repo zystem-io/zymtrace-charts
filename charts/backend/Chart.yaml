@@ -2,8 +2,8 @@ apiVersion: v2
 name: backend
 description: Deploy zymtrace's self-hosted services
 type: application
-version: 25.10.11
-appVersion: "25.10.11"
+version: 25.11.0
+appVersion: "25.11.0"
 keywords:
   - zymtrace
   - profiler
