@@ -17,22 +17,115 @@ global:
   skipClickHouseMigration: false  # Set to true to skip ClickHouse migrations specifically (sets SKIP_CH_MIGRATE=true)
 
 auth:
-  services:
-    # When set to a string, this authentication token is used to authenticate
-    # requests between zymtrace services as well as the profiler. Example command
-    # to generate a token:
-    #
-    # openssl rand -base64 24 | tr -d "=+/" | cut -c1-48
-    #
-    # The token must then also be passed to the profiler via the `-auth-token yourtoken` argument.
-    token: null
+  # Authentication type: "basic", "oidc", "local", or "none"
+  # This controls which authentication method is used for Gateway and Web services
+  type: "none"
 
-  # This enables HTTP basic authentication for the Gateway service, which provides access to the UI and other backend services.
-  # The Gateway serves as the main entry point and handles authentication for all routed traffic.
+  # Enable service token authentication for ingest and symdb services
+  # Works only when auth.type is "local" or "oidc"
+  serviceToken:
+    enabled: false
+
+  # HTTP Basic Authentication Configuration
+  # Active when auth.type is "basic"
   basic:
-    enabled: false   # Set to true to enable basic authentication
-    username: ""     # Required when enabled 
-    password: ""     # Required when enabled 
+    username: ""     # Required when type is "basic" 
+    password: ""     # Required when type is "basic"
+
+  # Identity service admin user configuration
+  # Admin user is created regardless of used auth.type
+  admin:
+    email: admin@example.com
+    password: admin
+    roles:
+      - "System Admin"
+
+  # Cookie settings (applies to web service)
+  # Used when auth is enabled and the type is "local" or "oidc"
+  cookie:
+    refreshMaxAgeSec: 31536000
+    refreshPath: /
+    loginMaxAgeSec: 60
+    loginPath: /
+    sameSite: lax
+    secure: true
+    httpOnly: true
+    cookieTtlSec: 60
+
+  # Enabled only when the type is "local" or "oidc"
+  validation:
+    # A list of possible token issuers, if not specified, derived from gateway host
+    issuers:
+    # A list of possible token audiences, "zymtrace" by default
+    audiences:
+
+    # Token signing configuration (original OIDC tokens are wrapped, signed, and verified using this key)
+    # You should generate your own keys for your deployment, i.e.:
+    # openssl genpkey -algorithm ED25519 -out /tmp/private.pem
+    # openssl pkey -in /tmp/private.pem -pubout -out /tmp/public.pem
+    keys:
+      privateKey:
+        # Private Key (PEM format) - Required for self-hosted auth
+        # Leave empty when using external OIDC providers (Google, Okta, etc.)
+        # Example format:
+        # -----BEGIN CERTIFICATE-----
+        # MIIBrDCCAVKgAwIBAgIUb7Y7r6OKgiFlnu6Zk0KN9qI6eZcwCgYIKoZIzj0EAwIw
+        # ...certificate content...
+        # -----END CERTIFICATE-----
+      publicKey:
+        # Public Key (PEM format) - Required for self-hosted auth and token validation
+        # Leave empty when using external OIDC providers (Google, Okta, etc.)
+        # Example format:
+        # -----BEGIN CERTIFICATE-----
+        # MIIBrDCCAVKgAwIBAgIUb7Y7r6OKgiFlnu6Zk0KN9qI6eZcwCgYIKoZIzj0EAwIw
+        # ...certificate content...
+        # -----END CERTIFICATE-----
+
+  # OIDC (OpenID Connect) Authentication Configuration
+  # Active when auth.type is "oidc"
+  # 
+  # DEFAULT: Configured for Google Authentication
+  # For other providers (Okta, Auth0, Azure AD), update the issuer URLs and client credentials below
+  oidc:
+    # OIDC Provider Configuration
+    # These settings apply to all services using OIDC
+    provider:
+      # GOOGLE OAuth 2.0 Configuration (default)
+      # 
+      # Setup Instructions:
+      # 1. Go to: https://console.cloud.google.com/apis/credentials
+      # 2. Create OAuth 2.0 Client ID (Application type: Web application)
+      # 3. Add Authorized redirect URI: https://your-zymtrace-domain.com/api/v1/oauth2/callback
+      # 4. Copy the Client ID and Client Secret below
+      # 
+      # For other OIDC providers:
+      #   Okta:     issuerUri: https://your-domain.okta.com
+      #   Auth0:    issuerUri: https://your-tenant.auth0.com
+      #   Azure AD: issuerUri: https://login.microsoftonline.com/{tenant-id}/v2.0
+      clientId: ''  # Required: Your OAuth Client ID (e.g., xxxxx.apps.googleusercontent.com for Google)
+      clientSecret: ''  # Required: Your OAuth Client Secret
+      
+      # OIDC Issuer URL
+      # GOOGLE (default): https://accounts.google.com
+      # For self-hosted auth: use your gateway's external URL (e.g., https://zymtrace.company.com)
+      # For NodePort/LoadBalancer: use your accessible URL (e.g., http://your-ip:30080)
+      # REQUIRED when using OIDC
+      issuerUri: "https://accounts.google.com"
+      
+      # Redirect URI - where the OIDC provider sends users after authentication
+      # Must be registered in your OIDC provider's console
+      # If empty: auto-derives from ingress.hosts.gateway.host as https://<host>/api/v1/oauth2/callback
+      # For NodePort/LoadBalancer or custom URLs: set explicitly (e.g., http://your-ip:30080/api/v1/oauth2/callback)
+      redirectUri: ""
+      
+      scopes:
+        - openid
+        - email
+        - profile
+      
+      extraParams:
+        - prompt=consent
+        - access_type=offline
 
 globalSymbolization:
   enabled: false
@@ -322,6 +415,7 @@ services:
       repository: zymtrace-backend
       tag: "" # Optional: overrides Chart.AppVersion if set, applied to all service tags  below.
     port: 8375
+    portTrusted: 8376
     replicas: 1
     # Use common HPA settings unless you need service-specific values
     #hpa:
@@ -397,6 +491,7 @@ services:
       repository: zymtrace-backend
       tag: ""
     port: 6107
+    portTrusted: 6108
     replicas: 1
     # Use common HPA settings unless you need service-specific values
     #hpa:
@@ -550,7 +645,10 @@ services:
       # Used for NodePort service type
       nodePort: ""
     port: 80
+    portTrusted: 9900
     adminPort: 9901
+    xff_append: false
+    xff_num_trusted_hops: 2
     # Use common HPA settings unless you need service-specific values
     # Individual HPA settings take precedence over common settings when uncommented
     #hpa:

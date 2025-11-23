@@ -33,6 +33,9 @@ spec:
             - name: http
               containerPort: {{ .Values.services.symdb.port }}
               protocol: TCP
+            - name: http-trusted
+              containerPort: {{ .Values.services.symdb.portTrusted }}
+              protocol: TCP
           resources:
             {{- toYaml .Values.services.symdb.resources | nindent 12 }}
             
@@ -76,6 +79,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.services.symdb.portTrusted }}
+      targetPort: {{ .Values.services.symdb.portTrusted }}
+      protocol: TCP
+      name: http-trusted
   selector:
     app: {{ include "zymtrace.resourceName" (list $ "symdb") }}
 ---

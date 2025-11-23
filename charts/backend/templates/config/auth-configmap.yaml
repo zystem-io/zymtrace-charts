@@ -1,0 +1,175 @@
+{{- include "zymtrace.validateAuthType" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "auth-config") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+data:
+  # AUTH
+  {{- /*
+  Ingest and SymDB authentication is enabled only for "local" and "oidc" auth types.
+  It does not make any sense otherwise.
+  */}}
+
+  {{- if or (eq .Values.auth.type "local") (eq .Values.auth.type "oidc") }}
+  {{- if .Values.auth.serviceToken.enabled }}
+  INGEST__AUTH__ENABLED: "true"
+  SYMDB__AUTH__ENABLED: "true"
+  {{- end }}
+  {{- end }}
+
+  {{- /*
+  Setup admin user if enabled
+  */}}
+  {{- $admin := .Values.auth.admin }}
+  {{- if $admin }}
+  IDENTITY__AUTH__ADMIN__EMAIL: {{ $admin.email | quote }}
+  IDENTITY__AUTH__ADMIN__PASSWORD: {{ $admin.password | quote }}
+  {{- $adminRoles := $admin.roles }}
+  {{- if $adminRoles }}
+  IDENTITY__AUTH__ADMIN__ROLES: {{ $adminRoles | join ";" | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- $authType := include "zymtrace.authType" . | upper }}
+
+  {{- /*
+  Derive issuer from ingress host (used as a fallback)
+  */}}
+
+  {{ $detectedIssuer := "" -}}
+  {{ if .Values.ingress.hosts.gateway.host -}}
+    {{ $proto := "https" -}}
+    {{ if not .Values.ingress.tls -}}
+      {{ $proto = "http" -}}
+    {{ end -}}
+    {{ $detectedIssuer = printf "%s://%s" $proto .Values.ingress.hosts.gateway.host -}}
+  {{- end }}
+
+  {{- /*
+  if the auth type is OIDC or LOCAL, then configure JWT validation:
+  - issuers and audiences
+  - signing keys
+  - cookie settings
+  */}}
+  {{- if or (eq $authType "OIDC") (eq $authType "LOCAL") }}
+  {{- /*
+  Build effective issuers and audiences
+    - If user sets auth.validation.issuers/audiences -> use them as-is
+    - Otherwise:
+      - issuers  => [ $detectedIssuer ]
+      - audiences => [ "zymtrace" ]
+  Also, ensure that "zymtrace" audience is included, because it's hardcoded in helm for now.
+  */}}
+  {{ $effectiveIssuers := default (list $detectedIssuer) .Values.auth.validation.issuers -}}
+  {{ $effectiveAudiences := default (list "zymtrace") .Values.auth.validation.audiences -}}
+  {{ $effectiveAudiences = uniq (append $effectiveAudiences "zymtrace") }}
+  WEB__AUTH__{{ $authType }}__VALIDATION__ISSUERS: {{ join ";" $effectiveIssuers | quote }}
+  WEB__AUTH__{{ $authType }}__VALIDATION__AUDIENCES: {{ join ";" $effectiveAudiences | quote }}
+
+  {{- /*
+  Ingest service will be issuing tokens with audience "zymtrace"
+  */}}
+  IDENTITY__AUTH__TOKEN__CLAIMS__AUDIENCE: "zymtrace"
+  IDENTITY__AUTH__TOKEN__CLAIMS__ISSUER: {{ $detectedIssuer | quote }}
+
+  {{- $keys := .Values.auth.validation.keys }}
+
+  {{- /*
+  fail if singing keys are not provided or empty, because it's a misconfiguration
+  */}}
+
+  {{- if or (not $keys) (not $keys.privateKey) (not $keys.publicKey) }}
+    {{ fail (printf "%s authentication is enabled but signing keys are not properly configured. Please provide both private and public keys under auth.signing.keys" $authType) }}
+  {{- end }}
+
+  {{- /*
+  identity service - token signing keys (common keys)
+  */}}
+
+  {{- with $keys.privateKey }}
+  IDENTITY__AUTH__TOKEN__PRIVATE_KEY__CONTENT: |-
+  {{ . | nindent 4 }}
+  {{- end }}
+
+  {{- /*
+  Both identity and web services should use the same public key for signing and verification
+  */}}
+
+  {{- with $keys.publicKey }}
+  IDENTITY__AUTH__TOKEN__PUBLIC_KEY__CONTENT: |-
+  {{ . | nindent 4 }}
+  WEB__AUTH__{{ $authType }}__VALIDATION__PUBLIC_KEY__CONTENT: |-
+  {{ . | nindent 4 }}
+  {{- end }}
+
+
+  {{- /*
+  Setup cookies for web service
+  */}}
+  {{- $cookie := .Values.auth.cookie }}
+  WEB__AUTH__{{ $authType }}__COOKIE__REFRESH_MAX_AGE_SEC: {{ $cookie.refreshMaxAgeSec | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__REFRESH_PATH: {{ $cookie.refreshPath | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__LOGIN_MAX_AGE_SEC: {{ $cookie.loginMaxAgeSec | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__LOGIN_PATH: {{ $cookie.loginPath | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__SAME_SITE: {{ $cookie.sameSite | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__SECURE: {{ $cookie.secure | quote }}
+  WEB__AUTH__{{ $authType }}__COOKIE__HTTP_ONLY: {{ $cookie.httpOnly | quote }}
+  # End of OIDC / LOCAL auth type config.
+  {{- end }}
+
+  {{- if eq $authType "LOCAL" }}
+  # Effective auth: local
+  {{- end }}
+
+  {{- if eq $authType "OIDC" }}
+  # Effective auth: oidc
+  {{- $oidc := .Values.auth.oidc }}
+
+  {{- /*
+  # Determine the issuer URI - use provider.issuerUri (required for OIDC)
+  */}}
+  {{- $issuerUri := $oidc.provider.issuerUri }}
+  {{- if not $issuerUri }}
+    {{ fail "OIDC is enabled but auth.oidc.provider.issuerUri is not set. Please provide either:\n  1. External provider issuer: https://accounts.google.com\n  2. Your gateway URL: https://your-domain.com (for self-hosted auth)" }}
+  {{- end }}
+
+  {{- /*
+  Auto-derive redirect URI from ingress host if not provided
+  */}}
+
+  {{- $redirectUri := $oidc.provider.redirectUri }}
+  {{- if not $redirectUri }}
+    {{- if .Values.ingress.hosts.gateway.host }}
+      {{- $protocol := "https" }}
+      {{- if not .Values.ingress.tls }}
+        {{- $protocol = "http" }}
+      {{- end }}
+      {{- $redirectUri = printf "%s://%s/api/v1/oauth2/callback" $protocol .Values.ingress.hosts.gateway.host }}
+    {{- else }}
+      {{ fail "OIDC is enabled but auth.oidc.provider.redirectUri is not set and no ingress host is configured. Please set auth.oidc.provider.redirectUri (e.g., https://your-domain.com/api/v1/oauth2/callback)" }}
+    {{- end }}
+  {{- end }}
+
+  {{- /*
+  OIDC provider configuration (common provider) for the identity service
+  */}}
+  IDENTITY__AUTH__OIDC__CLIENT_ID: {{ $oidc.provider.clientId | quote }}
+  IDENTITY__AUTH__OIDC__CLIENT_SECRET: {{ $oidc.provider.clientSecret | quote }}
+
+  {{- $scopes := $oidc.provider.scopes }}
+  {{- if $scopes }}
+  IDENTITY__AUTH__OIDC__SCOPES: {{ $scopes | join ";" | quote }}
+  {{- end }}
+
+  IDENTITY__AUTH__OIDC__ENDPOINTS__ISSUER_URI: {{ $issuerUri | quote }}
+  IDENTITY__AUTH__OIDC__ENDPOINTS__REDIRECT_URI: {{ $redirectUri | quote }}
+  IDENTITY__AUTH__OIDC__COOKIE_TTL_SEC: {{ .Values.auth.cookie.cookieTtlSec | quote }}
+
+  {{- $extra := $oidc.provider.extraParams }}
+  {{- if $extra }}
+  IDENTITY__AUTH__OIDC__EXTRA_PARAMS: {{ $extra | join ";" | quote }}
+  {{- end }}
+  {{- end }}

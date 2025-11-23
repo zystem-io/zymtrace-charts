@@ -106,8 +106,8 @@ Service environment configuration with individual service environment variables
 envFrom:
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
-  - secretRef:
-      name: {{ include "zymtrace.resourceName" (list $root "auth-token-secrets") }}
+  - configMapRef:
+      name: {{ include "zymtrace.resourceName" (list $root "auth-config") }}
 {{- if or (eq $service "ingest") (eq $service "web") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}
@@ -344,11 +344,48 @@ Common environment variables handling with validation
 {{- end -}}
 {{- end -}}
 
+{{/* Get the effective auth type, handling backward compatibility */}}
+{{- define "zymtrace.authType" -}}
+{{- $authType := .Values.auth.type -}}
+{{- /* Handle backward compatibility: check for old auth.basic.enabled flag */ -}}
+{{- if hasKey .Values.auth "basic" -}}
+{{- if hasKey .Values.auth.basic "enabled" -}}
+{{- if .Values.auth.basic.enabled -}}
+{{- $authType = "basic" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- $authType -}}
+{{- end -}}
+
+{{/* Validate auth type is one of the allowed values */}}
+{{- define "zymtrace.validateAuthType" -}}
+{{- $authType := include "zymtrace.authType" . -}}
+{{- if not (or (eq $authType "basic") (eq $authType "oidc") (eq $authType "local") (eq $authType "none")) -}}
+{{- fail (printf "Invalid auth.type '%s'. Allowed values are 'basic', 'oidc', or 'none'" $authType) -}}
+{{- end -}}
+
+{{- /* Warn about deprecated auth.basic.enabled */ -}}
+{{- if and (hasKey .Values "auth") (hasKey .Values.auth "basic") (hasKey .Values.auth.basic "enabled") -}}
+{{- printf "# ⚠️  WARNING: auth.basic.enabled is DEPRECATED and will be removed in a future version.\n" -}}
+{{- printf "#     Please migrate to auth.type in your values.yaml:\n" -}}
+{{- printf "#\n" -}}
+{{- printf "#     Migration:\n" -}}
+{{- printf "#       OLD: auth.basic.enabled: true\n" -}}
+{{- printf "#       NEW: auth.type: \"basic\"\n" -}}
+{{- printf "#\n" -}}
+{{- printf "#       OLD: auth.basic.enabled: false\n" -}}
+{{- printf "#       NEW: auth.type: \"none\"  # or \"oidc\" if using OIDC\n" -}}
+{{- end -}}
+{{- end -}}
+
+
 {{/* Validate basic auth credentials are provided when basic auth is enabled */}}
 {{- define "zymtrace.validateBasicAuth" -}}
-{{- if .Values.auth.basic.enabled -}}
+{{- $authType := include "zymtrace.authType" . -}}
+{{- if eq $authType "basic" -}}
 {{- if or (eq .Values.auth.basic.username "") (eq .Values.auth.basic.password "") -}}
-{{- fail "Basic authentication is enabled but username or password is empty. Please provide both auth.basic.username and auth.basic.password in the values.yaml or via --set." -}}
+{{- fail "Basic authentication is enabled (auth.type=basic) but username or password is empty. Please provide both auth.basic.username and auth.basic.password in the values.yaml or via --set." -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -358,7 +395,6 @@ Common environment variables handling with validation
 {{- if not .Values.global.skipCapabilityCheck -}}
 {{- $result := (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1beta1.metrics.k8s.io") -}}
 {{- if not $result -}}
-{{- fail "\n⛔ ERROR: Metrics Server not detected\n\nHorizontal Pod Autoscaler (HPA) requires Metrics Server to function.\n\nOptions:\n  1. Install Metrics Server:\n     kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml\n\n  2. Disable HPA in your values.yaml:\n     hpa.enabled: false\n\nVerify installation with:\n  kubectl get apiservice v1beta1.metrics.k8s.io" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

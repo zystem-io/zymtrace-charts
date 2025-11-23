@@ -33,6 +33,9 @@ spec:
             - name: http
               containerPort: {{ .Values.services.ingest.port }}
               protocol: TCP
+            - name: http-trusted
+              containerPort: {{ .Values.services.ingest.portTrusted }}
+              protocol: TCP
           resources:
             {{- toYaml .Values.services.ingest.resources | nindent 12 }}
             
@@ -77,6 +80,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.services.ingest.portTrusted }}
+      targetPort: {{ .Values.services.symdb.portTrusted }}
+      protocol: TCP
+      name: http-trusted
   selector:
     app: {{ include "zymtrace.resourceName" (list $ "ingest") }}
 ---

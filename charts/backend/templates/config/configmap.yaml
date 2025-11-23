@@ -1,6 +1,7 @@
 {{- include "zymtrace.validateMode" (list "clickhouse" .Values.clickhouse.mode) }}
 {{- include "zymtrace.validateMode" (list "postgres" .Values.postgres.mode) }}
 {{- include "zymtrace.validateMode" (list "storage" .Values.storage.mode) }}
+{{- include "zymtrace.validateAuthType" . }}
 {{- if eq .Values.clickhouse.mode "use_existing" }}
 {{- if .Values.clickhouse.use_existing.host }}
 {{- include "zymtrace.validateEndpoint" (list .Values.clickhouse.use_existing.host) }}
@@ -120,9 +121,15 @@ data:
 
   # Service endpoints
   INGEST__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
+
   INGEST__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.port }}"
+  INGEST__SYMDB__ENDPOINT_TRUSTED: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.portTrusted }}"
+
   SYMDB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
+
   WEB__SYMDB__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.port }}"
+  WEB__SYMDB__ENDPOINT_TRUSTED: "http://{{ include "zymtrace.resourceName" (list $ "gateway") }}:{{ .Values.services.gateway.portTrusted }}"
+
   WEB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
 
   # Event TTL.

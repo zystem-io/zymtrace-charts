@@ -33,6 +33,9 @@ spec:
             - name: http
               containerPort: {{ .Values.services.gateway.port }}
               protocol: TCP
+            - name: http-trusted
+              containerPort: {{ .Values.services.gateway.portTrusted }}
+              protocol: TCP
             - name: admin
               containerPort: {{ .Values.services.gateway.adminPort }}
               protocol: TCP
@@ -40,7 +43,7 @@ spec:
               containerPort: {{ .Values.services.gateway.mtls.port }}
               protocol: TCP
           env:
-            {{- if .Values.auth.basic.enabled }}
+            {{- if eq (include "zymtrace.authType" .) "basic" }}
             - name: UI_USER
               value: {{ .Values.auth.basic.username | quote }}
             - name: UI_PASSWORD
@@ -106,6 +109,10 @@ spec:
       targetPort: admin
       protocol: TCP
       name: admin
+    - port: {{ .Values.services.gateway.portTrusted }}
+      targetPort: {{ .Values.services.gateway.portTrusted }}
+      protocol: TCP
+      name: http-trusted
     {{- if .Values.services.gateway.mtls.enabled }}
     - name: mtls
       port: {{ .Values.services.gateway.mtls.port }}

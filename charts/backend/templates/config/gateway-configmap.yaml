@@ -8,16 +8,22 @@ metadata:
 data:
   SYMDB_HASH_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "symdb") }}.{{ .Release.Namespace }}.svc.cluster.local
   SYMDB_HASH_CLUSTER_PORT: "{{ .Values.services.symdb.port }}"
+  SYMDB_HASH_CLUSTER_PORT_TRUSTED: "{{ .Values.services.symdb.portTrusted }}"
   SYMDB_RR_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "symdb") }}.{{ .Release.Namespace }}.svc.cluster.local
   SYMDB_RR_CLUSTER_PORT: "{{ .Values.services.symdb.port }}"
+  SYMDB_RR_CLUSTER_PORT_TRUSTED: "{{ .Values.services.symdb.portTrusted }}"
   ADMIN_PORT: "{{ .Values.services.gateway.adminPort }}"
   LISTENER_PORT: "{{ .Values.services.gateway.port }}"
+  LISTENER_PORT_TRUSTED: "{{ .Values.services.gateway.portTrusted }}"
   INGEST_RR_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "ingest") }}.{{ .Release.Namespace }}.svc.cluster.local
   INGEST_RR_CLUSTER_PORT: "{{ .Values.services.ingest.port }}"
+  INGEST_RR_CLUSTER_PORT_TRUSTED: "{{ .Values.services.ingest.portTrusted }}"
   WEB_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "web") }}.{{ .Release.Namespace }}.svc.cluster.local
   WEB_CLUSTER_PORT: "{{ .Values.services.web.port }}"
   UI_CLUSTER_ADDRESS: {{ include "zymtrace.resourceName" (list $ "ui") }}.{{ .Release.Namespace }}.svc.cluster.local
   UI_CLUSTER_PORT: "{{ .Values.services.ui.port }}"
+  SKIP_XFF_APPEND: "{{ .Values.services.gateway.xff_append }}"
+  XFF_NUM_TRUSTED_HOPS: "{{ .Values.services.gateway.xff_num_trusted_hops }}"
 
   {{- if .Values.services.gateway.mtls.enabled }}
   SERVER_CERT_PATH: "/etc/envoy/certs/tls.crt"
