@@ -82,7 +82,7 @@ data:
   */}}
 
   {{- if or (not $keys) (not $keys.privateKey) (not $keys.publicKey) }}
-    {{ fail (printf "%s authentication is enabled but signing keys are not properly configured. Please provide both private and public keys under auth.signing.keys" $authType) }}
+    {{ fail (printf "%s authentication is enabled but signing keys are not properly configured. Please provide both private and public keys under auth.validation.keys" $authType) }}
   {{- end }}
 
   {{- /*
