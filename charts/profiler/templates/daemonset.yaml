@@ -70,10 +70,10 @@ spec:
         {{- with .Values.profiler.nodeSelector }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.profiler.tolerations }}
       tolerations:
+        {{- with .Values.profiler.tolerations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       {{- with .Values.profiler.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

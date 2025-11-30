@@ -13,6 +13,13 @@ data:
   It does not make any sense otherwise.
   */}}
 
+  {{- if .Values.auth.info.displayName }}
+  WEB__AUTH__INFO__DISPLAY_NAME: {{ .Values.auth.info.displayName | quote }}
+  {{- if .Values.auth.info.pictureUri }}
+  WEB__AUTH__INFO__PICTURE_URI: {{ .Values.auth.info.pictureUri | quote }}
+  {{- end }}
+  {{- end }}
+
   {{- if or (eq .Values.auth.type "local") (eq .Values.auth.type "oidc") }}
   {{- if .Values.auth.serviceToken.enabled }}
   INGEST__AUTH__ENABLED: "true"
@@ -66,8 +73,9 @@ data:
   {{ $effectiveIssuers := default (list $detectedIssuer) .Values.auth.validation.issuers -}}
   {{ $effectiveAudiences := default (list "zymtrace") .Values.auth.validation.audiences -}}
   {{ $effectiveAudiences = uniq (append $effectiveAudiences "zymtrace") }}
-  WEB__AUTH__{{ $authType }}__VALIDATION__ISSUERS: {{ join ";" $effectiveIssuers | quote }}
-  WEB__AUTH__{{ $authType }}__VALIDATION__AUDIENCES: {{ join ";" $effectiveAudiences | quote }}
+  WEB__AUTH__KIND: {{ .Values.auth.type | lower }}
+  WEB__AUTH__VALIDATION__ISSUERS: {{ join ";" $effectiveIssuers | quote }}
+  WEB__AUTH__VALIDATION__AUDIENCES: {{ join ";" $effectiveAudiences | quote }}
 
   {{- /*
   Ingest service will be issuing tokens with audience "zymtrace"
@@ -81,28 +89,36 @@ data:
   fail if singing keys are not provided or empty, because it's a misconfiguration
   */}}
 
-  {{- if or (not $keys) (not $keys.privateKey) (not $keys.publicKey) }}
-    {{ fail (printf "%s authentication is enabled but signing keys are not properly configured. Please provide both private and public keys under auth.validation.keys" $authType) }}
-  {{- end }}
-
   {{- /*
   identity service - token signing keys (common keys)
   */}}
 
+  {{- if and ($keys.privateKey) (not $keys.publicKey) }}
+    {{ fail "auth.validation.keys.privateKey and auth.validation.keys.publicKey must be provided for oidc or local auth types." }}
+  {{- end }}
+
+  {{- if and (not $keys.privateKey) ($keys.publicKey) }}
+    {{ fail "auth.validation.keys.privateKey and auth.validation.keys.publicKey must be provided for oidc or local auth types." }}
+  {{- end }}
+
+  {{- if $keys.privateKey }}
   {{- with $keys.privateKey }}
   IDENTITY__AUTH__TOKEN__PRIVATE_KEY__CONTENT: |-
   {{ . | nindent 4 }}
+  {{- end }}
   {{- end }}
 
   {{- /*
   Both identity and web services should use the same public key for signing and verification
   */}}
 
+  {{- if $keys.publicKey }}
   {{- with $keys.publicKey }}
   IDENTITY__AUTH__TOKEN__PUBLIC_KEY__CONTENT: |-
   {{ . | nindent 4 }}
-  WEB__AUTH__{{ $authType }}__VALIDATION__PUBLIC_KEY__CONTENT: |-
+  WEB__AUTH__VALIDATION__PUBLIC_KEY__CONTENT: |-
   {{ . | nindent 4 }}
+  {{- end }}
   {{- end }}
 
 
@@ -110,13 +126,13 @@ data:
   Setup cookies for web service
   */}}
   {{- $cookie := .Values.auth.cookie }}
-  WEB__AUTH__{{ $authType }}__COOKIE__REFRESH_MAX_AGE_SEC: {{ $cookie.refreshMaxAgeSec | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__REFRESH_PATH: {{ $cookie.refreshPath | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__LOGIN_MAX_AGE_SEC: {{ $cookie.loginMaxAgeSec | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__LOGIN_PATH: {{ $cookie.loginPath | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__SAME_SITE: {{ $cookie.sameSite | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__SECURE: {{ $cookie.secure | quote }}
-  WEB__AUTH__{{ $authType }}__COOKIE__HTTP_ONLY: {{ $cookie.httpOnly | quote }}
+  WEB__AUTH__COOKIE__REFRESH_MAX_AGE_SEC: {{ $cookie.refreshMaxAgeSec | quote }}
+  WEB__AUTH__COOKIE__REFRESH_PATH: {{ $cookie.refreshPath | quote }}
+  WEB__AUTH__COOKIE__LOGIN_MAX_AGE_SEC: {{ $cookie.loginMaxAgeSec | quote }}
+  WEB__AUTH__COOKIE__LOGIN_PATH: {{ $cookie.loginPath | quote }}
+  WEB__AUTH__COOKIE__SAME_SITE: {{ $cookie.sameSite | quote }}
+  WEB__AUTH__COOKIE__SECURE: {{ $cookie.secure | quote }}
+  WEB__AUTH__COOKIE__HTTP_ONLY: {{ $cookie.httpOnly | quote }}
   # End of OIDC / LOCAL auth type config.
   {{- end }}
 

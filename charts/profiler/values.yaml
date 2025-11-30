@@ -34,7 +34,7 @@ profiler:
         - SYS_ADMIN # CAP_SYS_ADMIN is required
   cudaProfiler:
     enabled: false # Set to true to enable CUDA profiler. Override with --set profiler.cudaProfiler.enabled=true
-    hostMountPath: "/var/lib/zymtrace/profiler" #can't use the standard /opt/zymtrace/profiler path because GKE mounts /opt as readonly for secuirty reasons. 
+    hostMountPath: "/var/lib/zymtrace/profiler" #can't use the standard /opt/zymtrace/profiler path because GKE mounts /opt as readonly for secuirty reasons.
   args:
     # For all available arguments, see: https://docs.zymtrace.com/profiler-cli-args
     # Override the collection agent with: --set profiler.args[0]="-collection-agent=your-service.namespace.svc.cluster.local:80"
@@ -48,6 +48,15 @@ profiler:
     # - "-dwarf"
     # - "-zymtrace-protocol"
     # - "-auth-token=mycustomauthtoken"
+    #
+    # GPU Metrics: https://docs.zymtrace.com/gpu-metrics#available-gpu-metrics
+    # To enable GPU metrics, add:
+    # - "--enable-gpu-metrics"
+    # - "-nvml-path=/path/to/nvml"  # Optional: profiler auto-detects if not specified
+    # - "-nvml-auto-scan"           # Optional: profiler will scan host system for NVML.
+    #                               # Not recommended for production: if lib isn't at standard path,
+    #                               # it's best to just run with that flag once, then specify the
+    #                               # path found and printed by the profiler explicitly in future runs.
   # Note: CLI args take precedence over environment variables
   env:
     # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
@@ -56,6 +65,14 @@ profiler:
     #ZYMTRACE_COLLECTION_AGENT: "zymtrace-ui.zymtrace.svc.cluster.local:80" 
     #ZYMTRACE_DISABLE_TLS: "true"
     # ZYMTRACE_TAGS: "region:us-west;env:prod"
+    #
+    # GPU Metrics: To enable GPU metrics via env vars instead of args:
+    # ZYMTRACE_ENABLE_GPU_METRICS: "true"
+    # ZYMTRACE_NVML_PATH: "/path/to/nvml"  # Optional: profiler auto-detects if not specified
+    # ZYMTRACE_NVML_AUTO_SCAN: 1           # Optional: profiler will scan host system for NVML.
+    #                                      # Not recommended for production: if lib isn't at standard path,
+    #                                      # it's best to just run with that flag once, then specify the
+    #                                      # path found and printed by the profiler explicitly in future runs.
     
     # Proxy settings
     #HTTPS_PROXY: "" #http://username:password@proxy:port
@@ -82,6 +99,7 @@ profiler:
     # nvidia.com/gpu: "true"           # Any node with NVIDIA GPU
     # nvidia.com/gpu.product: "A100"   # Specific GPU model
     # nvidia.com/gpu.memory: "40GB"    # Specific GPU memory
+    # accelerator: nvidia-tesla-k80    # For Google GKE GPU nodes
   tolerations:
     # Allow deploying to GPU nodes.
     - key: "nvidia.com/gpu"

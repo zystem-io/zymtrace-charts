@@ -21,6 +21,11 @@ auth:
   # This controls which authentication method is used for Gateway and Web services
   type: "none"
 
+  # Add branding to the login page (button text and custom logo)
+  info:
+    displayName: null
+    pictureUri: null
+
   # Enable service token authentication for ingest and symdb services
   # Works only when auth.type is "local" or "oidc"
   serviceToken:
@@ -35,7 +40,7 @@ auth:
   # Identity service admin user configuration
   # Admin user is created regardless of used auth.type
   admin:
-    email: admin@example.com
+    email: admin@zymtrace.com
     password: admin
     roles:
       - "System Admin"
