@@ -33,7 +33,7 @@ spec:
           env:
             {{- include "zymtrace.profiler.env" .Values.profiler | nindent 12 }}
           args:
-            {{- include "zymtrace.profiler.args" .Values.profiler.args | nindent 12 }}
+            {{- include "zymtrace.profiler.args" . | nindent 12 }}
           volumeMounts:
             - name: machine-id
               mountPath: /etc/machine-id

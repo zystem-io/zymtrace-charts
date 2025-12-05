@@ -111,9 +111,29 @@ Environment variables helper template
 
 {{/*
 Command line arguments helper template
+Handles dynamic cluster_id tag injection when running as a subchart
 */}}
 {{- define "zymtrace.profiler.args" -}}
-{{- range . }}
+{{- $clusterTag := "" -}}
+{{- $metadata := .Values.global.ClusterMetadata -}}
+{{- if and $metadata (hasKey $metadata "cluster_id") $metadata.cluster_id }}
+{{- $clusterTag = printf "cluster_id:%s" $metadata.cluster_id -}}
+{{- end -}}
+{{- $tagsHandled := false -}}
+{{- range .Values.profiler.args }}
+{{- if hasPrefix "-tags=" . }}
+{{- $tagsHandled = true }}
+{{- if $clusterTag }}
+{{- $existingTags := trimPrefix "-tags=" . }}
+- {{ printf "-tags=%s;%s" $existingTags $clusterTag | quote }}
+{{- else }}
 - {{ . | quote }}
+{{- end }}
+{{- else }}
+- {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- if and $clusterTag (not $tagsHandled) }}
+- {{ printf "-tags=%s" $clusterTag | quote }}
 {{- end }}
 {{- end -}}

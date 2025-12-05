@@ -8,6 +8,10 @@ global:
   imagePullSecrets:
     - name: null # Will be overridden by the template --> zymtrace-registry-cred
   imagePullPolicy: IfNotPresent
+  # ClusterMetadata is typically provided by parent chart when used as a subchart
+  # Set cluster_id to automatically add it as a tag to the profiler agent
+  ClusterMetadata:
+    cluster_id: "" # Override with --set global.ClusterMetadata.cluster_id=<cluster-id>
 
 rbac:
   create: true
