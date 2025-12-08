@@ -421,6 +421,7 @@ services:
       tag: "" # Optional: overrides Chart.AppVersion if set, applied to all service tags  below.
     port: 8375
     portTrusted: 8376
+    portHealth: 8377
     replicas: 1
     # Use common HPA settings unless you need service-specific values
     #hpa:
@@ -497,6 +498,7 @@ services:
       tag: ""
     port: 6107
     portTrusted: 6108
+    portHealth: 6109
     replicas: 1
     # Use common HPA settings unless you need service-specific values
     #hpa:
@@ -573,6 +575,7 @@ services:
       repository: zymtrace-backend
       tag: ""
     port: 7829
+    portHealth: 7831
     replicas: 1
     # Use common HPA settings unless you need service-specific values
     #hpa:
@@ -744,81 +747,81 @@ services:
 # NOTE: The Gateway serves as the main entry point and routes traffic to all backend services including the UI.# The Gateway is designed to be the external-facing service, while UI is accessed through the Gateway.
 # For direct external access to individual services without ingress, you can set service type to LoadBalancer or NodePort in the gat
 ingress:
- # Set to true if you want to expose services through an existing ingress controller
- enabled: false
+  # Set to true if you want to expose services through an existing ingress controller
+  enabled: false
 
- className: "nginx" # e.g nginx, traefik, alb
+  className: "nginx" # e.g nginx, traefik, alb
 
- # Common annotations
- # nginx.ingress.kubernetes.io/ssl-redirect: "true"        # Force HTTPS for all traffic
- # This is also a good place to specify TLS setup. e.g:
- # For cert-manager (Let's Encrypt):
- # annotations:
- #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
- # For cloud certificates:
- # annotations:
- #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:region:account:certificate/id"
- #
- # For HTTP/2 and gRPC support (different for each ingress controller):
- # Nginx:
- #   nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
- #   nginx.ingress.kubernetes.io/http2-enable: "true"
- #
- # Traefik:
- #   traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
- #   traefik.ingress.kubernetes.io/router.tls: "true"
- #   traefik.ingress.kubernetes.io/service.serversscheme: "h2c"
- #
- # AWS ALB:
- #   alb.ingress.kubernetes.io/backend-protocol-version: "GRPC"
- #   alb.ingress.kubernetes.io/target-type: "ip"
- annotations: {}
+  # Common annotations
+  # nginx.ingress.kubernetes.io/ssl-redirect: "true"        # Force HTTPS for all traffic
+  # This is also a good place to specify TLS setup. e.g:
+  # For cert-manager (Let's Encrypt):
+  # annotations:
+  #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  # For cloud certificates:
+  # annotations:
+  #   alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:region:account:certificate/id"
+  #
+  # For HTTP/2 and gRPC support (different for each ingress controller):
+  # Nginx:
+  #   nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+  #   nginx.ingress.kubernetes.io/http2-enable: "true"
+  #
+  # Traefik:
+  #   traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+  #   traefik.ingress.kubernetes.io/router.tls: "true"
+  #   traefik.ingress.kubernetes.io/service.serversscheme: "h2c"
+  #
+  # AWS ALB:
+  #   alb.ingress.kubernetes.io/backend-protocol-version: "GRPC"
+  #   alb.ingress.kubernetes.io/target-type: "ip"
+  annotations: {}
 
- hosts:
-   gateway:
-     # Primary gateway ingress - always available when ingress is enabled
-     enabled: true
-     host: "" # e.g zymtrace.company.com
-     paths:
-       - path: /
-         pathType: Prefix
-     annotations: {}
-       # You must set this limit for your ingress type otherwise, you may not be able to upload custom symbols.
-       # For NGINX:
-       # nginx.ingress.kubernetes.io/proxy-body-size: "0" # or 10GB
-       #
-       # For Traefik:
-       # traefik.ingress.kubernetes.io/buffer-size: "0"  # or 10GB
-       #
-       # For AWS ALB:
-       # alb.ingress.kubernetes.io/max-request-body-size: "0"  # 10737418240
+  hosts:
+    gateway:
+      # Primary gateway ingress - always available when ingress is enabled
+      enabled: true
+      host: "" # e.g zymtrace.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+      annotations: {}
+        # You must set this limit for your ingress type otherwise, you may not be able to upload custom symbols.
+        # For NGINX:
+        # nginx.ingress.kubernetes.io/proxy-body-size: "0" # or 10GB
+        #
+        # For Traefik:
+        # traefik.ingress.kubernetes.io/buffer-size: "0"  # or 10GB
+        #
+        # For AWS ALB:
+        # alb.ingress.kubernetes.io/max-request-body-size: "0"  # 10737418240
 
-     # mTLS gateway ingress - only available when services.gateway.mtls.enabled is true
-     # Requires SSL passthrough and client certificate authentication
-     # 
-    
-     mtls:
-       enabled: false
-       host: "" # e.g mtls.zymtrace.company.com - should be different from main gateway host
-       paths:
-         - path: /
-           pathType: Prefix
-       annotations: {}
-         # Required annotations for NGINX ingress with mTLS:
-         # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-         # nginx.ingress.kubernetes.io/proxy-body-size: "0"
-         # nginx.ingress.kubernetes.io/client-body-buffer-size: "1M"
-         #
-         # For Traefik ingress with mTLS:
-         # traefik.ingress.kubernetes.io/router.tls.passthrough: "true"
-         # traefik.ingress.kubernetes.io/service.serversscheme: "https"
-         #
-         # For AWS ALB ingress with mTLS:
-         # NOTE: AWS ALB doesn't support SSL passthrough like NGINX. 
+      # mTLS gateway ingress - only available when services.gateway.mtls.enabled is true
+      # Requires SSL passthrough and client certificate authentication
+      #
 
- # TLS config example:
- # tls:
- # - secretName: zymtrace-gateway-tls
- #   hosts:
- #     - zymtrace.company.com
- tls: []
+      mtls:
+        enabled: false
+        host: "" # e.g mtls.zymtrace.company.com - should be different from main gateway host
+        paths:
+          - path: /
+            pathType: Prefix
+        annotations: {}
+          # Required annotations for NGINX ingress with mTLS:
+          # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+          # nginx.ingress.kubernetes.io/proxy-body-size: "0"
+          # nginx.ingress.kubernetes.io/client-body-buffer-size: "1M"
+          #
+          # For Traefik ingress with mTLS:
+          # traefik.ingress.kubernetes.io/router.tls.passthrough: "true"
+          # traefik.ingress.kubernetes.io/service.serversscheme: "https"
+          #
+          # For AWS ALB ingress with mTLS:
+          # NOTE: AWS ALB doesn't support SSL passthrough like NGINX.
+
+  # TLS config example:
+  # tls:
+  # - secretName: zymtrace-gateway-tls
+  #   hosts:
+  #     - zymtrace.company.com
+  tls: []

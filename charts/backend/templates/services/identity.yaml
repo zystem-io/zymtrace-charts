@@ -33,27 +33,32 @@ spec:
             - name: http
               containerPort: {{ .Values.services.identity.port }}
               protocol: TCP
+            - name: http-health
+              containerPort: {{ .Values.services.identity.portHealth }}
+              protocol: TCP
           resources:
             {{- toYaml .Values.services.identity.resources | nindent 12 }}
-            
+
           {{- include "zymtrace.serviceEnvConfig" (list $ "identity") | nindent 10 }}
           {{- if include "zymtrace.livenessProbeEnabled" (list $ "identity") }}
           livenessProbe:
-            grpc:
-              service: zymtrace.pb.identity.v1.IdentityService
-              port: {{ .Values.services.identity.port }}
-            initialDelaySeconds: 30
-            periodSeconds: 60
-            failureThreshold: 5
+            httpGet:
+              path: /liveness
+              port: {{ .Values.services.identity.portHealth }}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           {{- end }}
           {{- if include "zymtrace.readinessProbeEnabled" (list $ "identity") }}
           readinessProbe:
-            grpc:
-              service: zymtrace.pb.identity.v1.IdentityService
-              port: {{ .Values.services.identity.port }}
-            initialDelaySeconds: 5
+            httpGet:
+              path: /readiness
+              port: {{ .Values.services.identity.portHealth }}
+            initialDelaySeconds: 15
             periodSeconds: 10
-            failureThreshold: 3
+            timeoutSeconds: 5
+            failureThreshold: 5
           {{- end }}
 ---
 apiVersion: v1
@@ -70,6 +75,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.services.identity.portHealth }}
+      targetPort: http-health
+      protocol: TCP
+      name: http-health
   selector:
     app: {{ include "zymtrace.resourceName" (list $ "identity") }}
 ---

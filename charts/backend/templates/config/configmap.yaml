@@ -132,6 +132,20 @@ data:
 
   WEB__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
 
+  # Health check endpoints
+  INGEST__IDENTITY_SERVICE__HEALTH_ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.portHealth }}"
+  INGEST__SYMDB__HEALTH_ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.portHealth }}"
+
+  WEB__SYMDB__HEALTH_ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.portHealth }}"
+  WEB__IDENTITY_SERVICE__HEALTH_ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.portHealth }}"
+
+  SYMDB__IDENTITY_SERVICE__HEALTH_ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.portHealth }}"
+
+  # Health check bind addresses
+  IDENTITY__GRPC_SERVER__BIND_ADDR_HEALTH_CHECK: "0.0.0.0:{{ .Values.services.identity.portHealth }}"
+  INGEST__GRPC_SERVER__BIND_ADDR_HEALTH_CHECK: "0.0.0.0:{{ .Values.services.ingest.portHealth }}"
+  SYMDB__GRPC_SERVER__BIND_ADDR_HEALTH_CHECK: "0.0.0.0:{{ .Values.services.symdb.portHealth }}"
+
   # Event TTL.
   INGEST__EVENT_TTL_HOURS: {{ (mul .Values.global.dataRetentionDays 24) | quote }}
 
