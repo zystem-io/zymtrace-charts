@@ -24,9 +24,9 @@
 
     📊 Access the application:
     
-    UI Service is available at:
+    Gateway Service is available at:
    
-       $ kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "zymtrace.resourceName" (list $ "ui") }} 8080:{{ .Values.services.ui.port }}
+       $ kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "zymtrace.resourceName" (list $ "gateway") }} 8080:{{ .Values.services.gateway.port }}
     Then visit: http://localhost:8080
 
      Alternatively, $kubectl get svc -n {{ .Release.Namespace }} - should display a NodePort, if enabled. 
@@ -62,4 +62,4 @@
 
     🆘 Need help? Contact us:
     - Support: support@zymtrace.com
-    - Issues: https://github.com/zystem-io/deploy-zymtrace/issues
+    - Issues: https://github.com/zystem-io/zymtrace-charts/issues

@@ -141,6 +141,28 @@ globalSymbolization:
     region: ""
     endpoint: ""
 
+# AI Assistant Configuration
+# Enable AI-powered features in the zymtrace UI
+# Supports multiple AI providers: Anthropic Claude, Google Gemini, and OpenAI ChatGPT
+# To enable, provide API keys for your chosen provider(s)
+aiAssistant:
+  enabled: false  # Set to true to enable AI Assistant features
+  
+  # Anthropic Claude Configuration
+  # Get your API key from: https://console.anthropic.com/
+  anthropic:
+    apiKey: ""  # Your Anthropic API key (sets WEB__ASSISTANT__API_KEYS__ANTHROPIC)
+  
+  # Google Gemini Configuration
+  # Get your API key from: https://aistudio.google.com/apikey
+  gemini:
+    apiKey: ""  # Your Google Gemini API key (sets WEB__ASSISTANT__API_KEYS__GEMINI)
+  
+  # OpenAI Configuration
+  # Get your API key from: https://platform.openai.com/api-keys
+  openai:
+    apiKey: ""  # Your OpenAI API key (sets WEB__ASSISTANT__API_KEYS__OPENAI)
+
 # Database Configurations
 clickhouse:
   mode: "create"  # "create" or "use_existing"

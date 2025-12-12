@@ -1,6 +1,23 @@
-# zymtrace Backend Helm Chart
+# backend
 
-This Helm chart deploys zymtrace backend services to a Kubernetes cluster.
+![Version: 25.12.4](https://img.shields.io/badge/Version-25.12.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.12.4](https://img.shields.io/badge/AppVersion-25.12.5-informational?style=flat-square)
+
+Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
+
+**Homepage:** <https://docs.zymtrace.com>
+
+## Source Code
+
+* <https://github.com/zystem-io/zymtrace-charts/tree/main/charts>
+
+## Documentation
+
+For detailed configuration and usage instructions, see:
+* [Getting Started](https://docs.zymtrace.com/getting-started)
+* [Install Backend](https://docs.zymtrace.com/install/backend)
+* [Architecture](https://docs.zymtrace.com/architecture)
+* [Authentication](https://docs.zymtrace.com/authentication)
+* [Database Configuration](https://docs.zymtrace.com/databases)
 
 ## Prerequisites
 
@@ -11,963 +28,405 @@ This Helm chart deploys zymtrace backend services to a Kubernetes cluster.
 - For Google Cloud SQL with IAM: GKE cluster with Workload Identity configured
 - For NetworkPolicies: A CNI that supports NetworkPolicy enforcement (Calico, Cilium, Weave Net, etc.)
 
-## Key Features
+## Installation
 
-### ✨ Comprehensive Node Placement Control
-- **Service-level configuration**: Configure nodeSelector, tolerations, and affinity for individual services
-- **Database-level configuration**: Independent node placement settings for ClickHouse, PostgreSQL, and MinIO
-- **Intelligent precedence**: Individual service settings override common settings
-- **Complete coverage**: All services and databases support full node placement configuration
+Add the zymtrace Helm repository:
 
-### 🔧 Flexible Environment Variables
-- **Common environment variables**: Set shared environment variables across all services
-- **Service-specific overrides**: Each service can define its own environment variables
-- **Gateway service support**: Special handling for gateway service configuration
-- **Precedence control**: Service-specific env vars take priority over common settings
-
-### 🚀 Advanced Scheduling Features
-- **Pod affinity/anti-affinity**: Control pod co-location and separation
-- **Node affinity**: Schedule pods on specific node types
-- **Toleration support**: Allow scheduling on tainted nodes
-- **HPA integration**: Horizontal Pod Autoscaling with proper node placement
-
-### 🔒 Enhanced Security
-- **NetworkPolicies**: Fine-grained database access control
-- **Service isolation**: Limit database access to authorized services only
-- **CNI compatibility**: Automatic detection and graceful fallback
-
-## Quick Start Examples
-
-### Basic Installation
 ```bash
-helm install zymtrace ./charts/backend \
+helm repo add zymtrace https://helm.zystem.io
+helm repo update
+```
+
+To search for available versions:
+
+```bash
+helm search repo zymtrace --versions
+```
+
+### Install with a values file
+
+```bash
+helm install backend zymtrace/backend \
+  --namespace zymtrace \
+  --create-namespace \
+  -f backend-values.yaml
+```
+
+### Install without a values file (basic)
+
+```bash
+helm install backend zymtrace/backend \
+  --namespace zymtrace \
+  --create-namespace \
   --set global.licenseKey="your-license-key"
 ```
 
-### Installation with Node Placement
-```bash
-helm install zymtrace ./charts/backend \
-  --set global.licenseKey="your-license-key" \
-  --set services.common.nodeSelector."kubernetes\.io/arch"="amd64" \
-  --set clickhouse.nodeSelector."workload-type"="database" \
-  --set postgres.nodeSelector."workload-type"="database"
-```
+### Install with external databases
 
-### Installation with Service-Specific Configuration
 ```bash
-helm install zymtrace ./charts/backend \
-  --set global.licenseKey="your-license-key" \
-  --set services.symdb.env.RUST_LOG="debug" \
-  --set services.web.env.RUST_LOG="info" \
-  --set services.symdb.nodeSelector."storage-type"="high-iops"
-```
-
-### Installation with External Databases
-```bash
-helm install zymtrace ./charts/backend \
-  --set global.licenseKey="your-license-key" \
+helm install backend zymtrace/backend \
+  --namespace zymtrace \
+  --create-namespace \
   --set clickhouse.mode="use_existing" \
   --set clickhouse.use_existing.host="https://clickhouse.example.com:8443" \
+  --set clickhouse.use_existing.user="your-user" \
+  --set clickhouse.use_existing.password="your-password" \
   --set postgres.mode="use_existing" \
-  --set postgres.use_existing.host="postgres.example.com:5432"
+  --set postgres.use_existing.host="postgres.example.com:5432" \
+  --set postgres.use_existing.user="your-user" \
+  --set postgres.use_existing.password="your-password"
 ```
 
-## Network Security with NetworkPolicies
+## Key Features
 
-This chart includes optional NetworkPolicy resources to secure database access within your cluster. NetworkPolicies restrict which pods can communicate with your PostgreSQL and ClickHouse databases.
+- **Comprehensive Node Placement Control**: Configure nodeSelector, tolerations, and affinity for individual services and databases
+- **Advanced Scheduling**: Pod affinity/anti-affinity, node affinity, HPA integration
+- **Enhanced Security**: NetworkPolicies for fine-grained database access control
+- **Multiple Database Modes**: Create in-cluster or connect to existing ClickHouse, PostgreSQL, and object storage
+- **Authentication Options**:  OIDC (Google, Okta, Auth0, Azure AD), or local auth
 
-### How NetworkPolicies Work
+## Configuration Examples (values file)
 
-When enabled, the chart creates NetworkPolicies that:
+See the [Values](#values) section for all available options.
 
-- **PostgreSQL**: Only allow access from `migrate`, `identity`, and `symdb` services
-- **ClickHouse**: Only allow access from `ingest` and `web` services
-- **Block all other traffic**: Any other pods in the cluster are denied access to the databases
-
-### CNI Compatibility
-
-NetworkPolicies require a Container Network Interface (CNI) that supports policy enforcement:
-
-### Enabling/Disabling NetworkPolicies
-
-NetworkPolicies are **enabled by default**. To disable them (e.g., for Flannel clusters):
+### Basic with Ingress
 
 ```yaml
-services:
-  activateNetworkPolicies: false
+global:
+  licenseKey: "your-license-key"
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    gateway:
+      enabled: true
+      host: "zymtrace.company.com"
+  tls:
+    - secretName: zymtrace-tls
+      hosts:
+        - zymtrace.company.com
 ```
 
-Or via Helm command:
-```bash
-helm install zymtrace ./charts/backend --set services.activateNetworkPolicies=false
-```
-
-### Important Notes
-
-- NetworkPolicies only apply when databases are deployed within the cluster (`create` mode for ClickHouse, `create` or `gcp_cloudsql` modes for PostgreSQL)
-- For `use_existing` database modes, no NetworkPolicies are created since databases are external
-- The chart automatically detects if NetworkPolicy API is available and skips creation if not supported
-- Standard Flannel users **must** set `activateNetworkPolicies: false` to avoid silent policy failures
-
-### Troubleshooting NetworkPolicies
-
-If you experience connectivity issues after enabling NetworkPolicies:
-
-1. **Check if your CNI supports NetworkPolicies**:
-   ```bash
-   kubectl get networkpolicies -n your-namespace
-   kubectl describe networkpolicy zymtrace-postgres-network-policy -n your-namespace
-   ```
-
-2. **Verify pod labels match policy selectors**:
-   ```bash
-   kubectl get pods --show-labels -n your-namespace
-   ```
-
-3. **Test connectivity** from allowed services:
-   ```bash
-   kubectl exec -it zymtrace-identity-xxx -- nc -zv zymtrace-postgres 5432
-   ```
-
-## Horizontal Pod Autoscaling (HPA)
-
-This chart includes support for Horizontal Pod Autoscaling (HPA) for service components:
-
-- Web service
-- Ingest service
-- SymDB service
-- UI service
-- Identity service
-
-### How It Works
-
-HPA automatically scales the number of pods based on observed CPU utilization. By default, HPA is disabled for all services.
-
-To use HPA:
-
-1. Ensure your cluster has the metrics server installed:
-   ```
-   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-   ```
-
-2. Enable HPA for desired services in your values.yaml file or using --set:
-   ```yaml
-   services:
-     web:
-       hpa:
-         enabled: true
-         minReplicas: 1
-         maxReplicas: 5
-         targetCPUUtilizationPercentage: 80
-   ```
-
-   Or via Helm command:
-   ```
-   helm upgrade zymtrace ./charts/backend --set services.web.hpa.enabled=true
-   ```
-
-3. The HPA will automatically scale between minReplicas and maxReplicas to maintain the target CPU utilization (80% by default).
-
-### Important Notes
-
-- HPA is only supported for service components, not for database components
-- HPA uses the default service account in your deployment namespace
-- For production environments, verify the default service account has appropriate permissions for the autoscaling API
-
-## Service Configuration
-
-This chart provides flexible configuration options for each service, allowing you to customize behavior at both the common level and individual service level.
-
-### Individual Service Configuration
-
-Each service supports individual configuration that takes precedence over common settings:
+### With External Databases
 
 ```yaml
-services:
-  # Common configuration applied to all services (unless overridden)
-  common:
-    nodeSelector:
-      kubernetes.io/arch: amd64
-    tolerations:
-    - key: "shared"
-      operator: "Equal"
-      value: "zymtrace"
-      effect: "NoSchedule"
-    affinity: {}
-    env:
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://jaeger:4317"
-  
-  # Individual service configuration (takes precedence over common)
-  symdb:
-    nodeSelector:
-      storage-type: high-iops  # Overrides common nodeSelector
-    tolerations:
-    - key: "workload"          # Overrides common tolerations
-      operator: "Equal"
-      value: "symdb"
-      effect: "NoSchedule"
-    env:
-      RUST_LOG: "debug"        # Service-specific environment variable
-      SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
-    affinity:
-      nodeAffinity:           # Service-specific affinity
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: workload-type
-              operator: In
-              values:
-              - database
-  
-  # Another service with different configuration
-  web:
-    env:
-      RUST_LOG: "info"
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - zymtrace-web
-            topologyKey: kubernetes.io/hostname
-
-# Database configuration (independent of service settings)
 clickhouse:
-  nodeSelector:
-    storage-type: high-performance
-  tolerations:
-  - key: "database"
-    operator: "Equal"
-    value: "clickhouse"
-    effect: "NoSchedule"
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: workload-type
-            operator: In
-            values:
-            - database
+  mode: "use_existing"
+  use_existing:
+    host: "https://clickhouse.example.com:8443"
+    user: "your-username"
+    password: "your-password"
 
 postgres:
-  nodeSelector:
-    database-tier: primary
-  tolerations:
-  - key: "database"
-    operator: "Equal"
-    value: "postgres"
-    effect: "NoSchedule"
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - zymtrace-postgres
-          topologyKey: kubernetes.io/hostname
-
-storage:
-  nodeSelector:
-    storage-type: object-storage
-  tolerations:
-  - key: "storage"
-    operator: "Equal"
-    value: "minio"
-    effect: "NoSchedule"
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 50
-        preference:
-          matchExpressions:
-          - key: storage-type
-            operator: In
-            values:
-            - high-iops
+  mode: "use_existing"
+  use_existing:
+    host: "postgres.example.com:5432"
+    user: "your-username"
+    password: "your-password"
+    secure: true
 ```
 
-### Supported Individual Service Settings
-
-Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) supports:
-
-- **nodeSelector**: Node selection constraints
-- **tolerations**: Toleration of node taints
-- **affinity**: Pod affinity and anti-affinity rules
-- **env**: Service-specific environment variables
-- **resources**: CPU and memory limits/requests
-- **hpa**: Horizontal Pod Autoscaler settings
-
-### Environment Variables
-
-Set environment variables at the common level or per service:
-
-```yaml
-services:
-  common:
-    env:
-      # Applied to all services
-      SHARED_SETTING: "value"
-      OTEL_ENDPOINT: "http://otel-collector:4317"
-  
-  web:
-    env:
-      # Only applied to web service
-      WEB__CUSTOM_SETTING: "production"
-      RUST_LOG: "info"
-  
-  ingest:
-    env:
-      # Only applied to ingest service
-      RUST_LOG: "debug"  # Different log level for ingest
-```
-
-## Node Placement
-
-Control where pods are scheduled using nodeSelector, tolerations, and affinity.
-
-### Node Selectors
-
-Specify node selectors at the common level or per service:
-
-```yaml
-# Common node selector for all services
-services:
-  common:
-    nodeSelector:
-      kubernetes.io/arch: amd64
-      disk-type: ssd
-
-# Individual service node selectors (override common)
-services:
-  symdb:
-    nodeSelector:
-      storage-type: high-performance
-      workload-type: database
-
-# Database node selectors
-clickhouse:
-  nodeSelector:
-    storage-type: high-performance
-    
-postgres:
-  nodeSelector:
-    database-tier: primary
-```
-
-### Tolerations
-
-Allow pods to be scheduled on tainted nodes:
-
-```yaml
-# Common tolerations for all services
-services:
-  common:
-    tolerations:
-    - key: "dedicated"
-      operator: "Equal"
-      value: "zymtrace"
-      effect: "NoSchedule"
-
-# Individual service tolerations (override common)
-services:
-  ingest:
-    tolerations:
-    - key: "workload"
-      operator: "Equal"
-      value: "compute-intensive"
-      effect: "NoSchedule"
-
-# Database tolerations
-postgres:
-  tolerations:
-  - key: "node.kubernetes.io/memory-pressure"
-    operator: "Exists"
-    effect: "NoExecute"
-    tolerationSeconds: 3600
-```
-
-### Affinity Rules
-
-Configure pod affinity and anti-affinity for both services and databases:
-
-```yaml
-# Common affinity for all services
-services:
-  common:
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: kubernetes.io/arch
-              operator: In
-              values:
-              - amd64
-
-# Individual service affinity (overrides common)
-services:
-  web:
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - zymtrace-web
-            topologyKey: kubernetes.io/hostname
-
-# Database affinity configuration
-clickhouse:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: workload-type
-            operator: In
-            values:
-            - database
-
-postgres:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: app
-              operator: In
-              values:
-              - zymtrace-postgres
-          topologyKey: kubernetes.io/hostname
-
-storage:
-  affinity:
-    nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 50
-        preference:
-          matchExpressions:
-          - key: storage-type
-            operator: In
-            values:
-            - high-iops
-```
-
-### Configuration Precedence
-
-The configuration precedence (highest to lowest) is:
-
-1. **Individual service settings** (e.g., `services.symdb.nodeSelector`)
-2. **Common service settings** (e.g., `services.common.nodeSelector`)
-3. **Default values**
-
-**Database Configuration:** Databases (ClickHouse, PostgreSQL, MinIO) support their own dedicated configuration sections and do not inherit from service common settings. Each database component supports:
-- `nodeSelector`: Node selection constraints
-- `tolerations`: Toleration of node taints  
-- `affinity`: Pod affinity and anti-affinity rules
-
-**IMPORTANT NOTE:** When using tolerations with tainted nodes, ensure you configure tolerations for both:
-
-1. `services.common.tolerations` (for application services)
-2. Database component tolerations (e.g., `clickhouse.tolerations`, `postgres.tolerations`, `storage.tolerations`)
-
-This ensures initialization jobs and database pods can also run on tainted nodes.
-
-## Parameters
-
-### Global Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `global.licenseKey` | Your zymtrace license key | `""` |
-| `global.namePrefix` | Prefix for all resource names | `"zymtrace"` |
-| `global.imageRegistry` | Default registry for all images | `"docker.io"` |
-| `global.appImageRegistry` | Specific registry for zymtrace backend services | `"ghcr.io/zystem-io"` |
-| `global.registry.requirePullSecret` | Whether to use image pull secrets | `false` |
-| `global.imagePullPolicy` | Image pull policy | `"IfNotPresent"` |
-| `global.dataRetentionDays` | Data retention period in days (0 = forever) | `30` |
-
-### Network Security
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `services.activateNetworkPolicies` | Enable NetworkPolicy creation for database access control | `true` |
-
-### Service Configuration
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `services.common.nodeSelector` | Node selector for all application services | `{}` |
-| `services.common.tolerations` | Tolerations for all application services | `[]` |
-| `services.common.affinity` | Affinity rules for all application services | `{}` |
-| `services.common.env` | Environment variables for all application services | `{}` |
-| `services.common.hpa.enabled` | Enable HPA for all services (unless overridden) | `false` |
-| `services.common.hpa.minReplicas` | Default minimum replicas for HPA | `1` |
-| `services.common.hpa.maxReplicas` | Default maximum replicas for HPA | `5` |
-| `services.common.hpa.targetCPUUtilizationPercentage` | Default CPU target for HPA | `80` |
-
-### Individual Service Configuration
-Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) supports:
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `services.<service>.nodeSelector` | Node selector (overrides common) | `{}` |
-| `services.<service>.tolerations` | Tolerations (overrides common) | `[]` |
-| `services.<service>.affinity` | Affinity rules (overrides common) | `{}` |
-| `services.<service>.env` | Environment variables (service-specific) | `{}` |
-| `services.<service>.replicas` | Number of replicas | `1` |
-| `services.<service>.resources` | CPU/memory requests and limits | varies |
-| `services.<service>.hpa.enabled` | Enable HPA for this service | `false` |
-| `services.<service>.hpa.minReplicas` | Minimum replicas for HPA | `1` |
-| `services.<service>.hpa.maxReplicas` | Maximum replicas for HPA | `5` |
-| `services.<service>.hpa.targetCPUUtilizationPercentage` | CPU target for HPA | `80` |
-
-### Gateway Service
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `services.gateway.service.type` | Service type (ClusterIP, NodePort, LoadBalancer) | `"ClusterIP"` |
-| `services.gateway.service.nodePort` | Node port when service type is NodePort | `""` |
-| `services.gateway.port` | Gateway HTTP port | `80` |
-| `services.gateway.adminPort` | Gateway admin port | `9901` |
-
-### Authentication
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `auth.basic.enabled` | Enable HTTP basic authentication | `false` |
-| `auth.basic.username` | Basic auth username (required when enabled) | `""` |
-| `auth.basic.password` | Basic auth password (required when enabled) | `""` |
-
-### Database Configuration
-
-#### ClickHouse
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `clickhouse.mode` | ClickHouse mode: "create" or "use_existing" | `"create"` |
-| `clickhouse.nodeSelector` | Node selector for ClickHouse database | `{}` |
-| `clickhouse.tolerations` | Tolerations for ClickHouse database | `[]` |
-| `clickhouse.affinity` | Affinity rules for ClickHouse database | `{}` |
-| `clickhouse.create.replicas` | Number of ClickHouse replicas | `1` |
-| `clickhouse.create.config.user` | ClickHouse username | `"clickhouse"` |
-| `clickhouse.create.config.password` | ClickHouse password | `"clickhouse123"` |
-| `clickhouse.create.config.database` | ClickHouse database prefix | `"zymtrace"` |
-| `clickhouse.use_existing.host` | External ClickHouse URL (http://host:8123) | `""` |
-| `clickhouse.use_existing.user` | External ClickHouse username | `""` |
-| `clickhouse.use_existing.password` | External ClickHouse password | `""` |
-| `clickhouse.use_existing.database` | External ClickHouse database prefix | `"zymtrace"` |
-| `clickhouse.use_existing.autoCreateDBs` | Auto-create databases on external ClickHouse | `false` |
-
-#### PostgreSQL
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `postgres.mode` | PostgreSQL mode: "create", "use_existing", or "gcp_cloudsql" | `"create"` |
-| `postgres.nodeSelector` | Node selector for PostgreSQL database | `{}` |
-| `postgres.tolerations` | Tolerations for PostgreSQL database | `[]` |
-| `postgres.affinity` | Affinity rules for PostgreSQL database | `{}` |
-| `postgres.create.replicas` | Number of PostgreSQL replicas | `1` |
-| `postgres.create.config.user` | PostgreSQL username | `"postgres"` |
-| `postgres.create.config.password` | PostgreSQL password | `"postgres123"` |
-| `postgres.use_existing.host` | External PostgreSQL host:port | `""` |
-| `postgres.use_existing.user` | External PostgreSQL username | `""` |
-| `postgres.use_existing.password` | External PostgreSQL password | `""` |
-| `postgres.use_existing.database` | External PostgreSQL database prefix | `"zymtrace"` |
-| `postgres.use_existing.secure` | Enable TLS for external PostgreSQL | `false` |
-| `postgres.use_existing.autoCreateDBs` | Auto-create databases on external PostgreSQL | `false` |
-
-#### Google Cloud SQL
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `postgres.gcp_cloudsql.instance` | Cloud SQL instance (PROJECT:REGION:INSTANCE) | `""` |
-| `postgres.gcp_cloudsql.user` | Cloud SQL IAM user | `""` |
-| `postgres.gcp_cloudsql.database` | Cloud SQL database prefix | `"zymtrace"` |
-| `postgres.gcp_cloudsql.autoCreateDBs` | Auto-create databases on Cloud SQL | `false` |
-| `postgres.gcp_cloudsql.privateIP` | Use private IP connectivity | `false` |
-| `postgres.gcp_cloudsql.workloadIdentity.enabled` | Enable Workload Identity | `true` |
-| `postgres.gcp_cloudsql.proxy.port` | Cloud SQL Proxy port | `5432` |
-| `postgres.gcp_cloudsql.serviceAccount` | Kubernetes service account for Workload Identity | `""` |
-| `postgres.gcp_cloudsql.replicas` | Number of proxy replicas (when HPA disabled) | `1` |
-| `postgres.gcp_cloudsql.hpa.enabled` | Enable HPA for Cloud SQL proxy | `false` |
-
-#### Object Storage
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `storage.mode` | Storage mode: "create" or "use_existing" | `"create"` |
-| `storage.nodeSelector` | Node selector for MinIO object storage | `{}` |
-| `storage.tolerations` | Tolerations for MinIO object storage | `[]` |
-| `storage.affinity` | Affinity rules for MinIO object storage | `{}` |
-| `storage.create.replicas` | Number of MinIO replicas | `1` |
-| `storage.create.config.user` | MinIO access key | `"minio"` |
-| `storage.create.config.password` | MinIO secret key | `"minio123"` |
-| `storage.use_existing.type` | External storage type: "minio", "s3", or "gcs" | `"minio"` |
-| `storage.use_existing.minio.endpoint` | MinIO endpoint URL (must include http:// or https://) | `""` |
-| `storage.use_existing.minio.user` | MinIO access key | `""` |
-| `storage.use_existing.minio.password` | MinIO secret key | `""` |
-| `storage.use_existing.s3.region` | AWS S3 region | `""` |
-| `storage.use_existing.s3.accessKey` | AWS S3 access key | `""` |
-| `storage.use_existing.s3.secretKey` | AWS S3 secret key | `""` |
-| `storage.use_existing.s3.endpoint` | Custom S3 endpoint (optional) | `""` |
-| `storage.use_existing.s3.sessionToken` | AWS S3 session token (optional) | `""` |
-| `storage.use_existing.gcs.endpoint` | GCS S3-compatible endpoint | `"https://storage.googleapis.com"` |
-| `storage.use_existing.gcs.accessKey` | GCS HMAC access key | `""` |
-| `storage.use_existing.gcs.secretKey` | GCS HMAC secret key | `""` |
-| `storage.buckets.symbols` | Symbol storage bucket name | `"zymtrace-symdb"` |
-
-### Global Symbolization
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `globalSymbolization.enabled` | Enable global symbolization service | `false` |
-| `globalSymbolization.config.bucketName` | Global symbolization bucket name | `""` |
-| `globalSymbolization.config.accessKey` | Global symbolization access key | `""` |
-| `globalSymbolization.config.secretKey` | Global symbolization secret key | `""` |
-| `globalSymbolization.config.region` | Global symbolization region | `""` |
-| `globalSymbolization.config.endpoint` | Global symbolization endpoint | `""` |
-
-### Ingress
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `ingress.enabled` | Enable ingress creation | `false` |
-| `ingress.className` | Ingress class name | `"nginx"` |
-| `ingress.annotations` | Ingress annotations | `{}` |
-| `ingress.hosts.gateway.enabled` | Enable gateway ingress | `true` |
-| `ingress.hosts.gateway.host` | Gateway hostname | `""` |
-| `ingress.tls` | TLS configuration | `[]` |
-
-## Google Cloud SQL with IAM Authentication
-
-This chart supports using Google Cloud SQL for PostgreSQL with IAM authentication via the Cloud SQL Auth Proxy.
-
-### Setting up IAM Authentication for Cloud SQL
-
-1. **Create a Google Cloud SQL PostgreSQL instance**
-
-   ```bash
-   gcloud sql instances create zymtrace-pg \
-     --database-version=POSTGRES_14 \
-     --cpu=2 \
-     --memory=4GB \
-     --region=us-central1
-   ```
-
-2. **Create a database user with the Cloud SQL IAM Authentication enabled**
-
-   ```bash
-   gcloud sql users create postgres \
-     --instance=zymtrace-pg \
-     --type=cloud_iam_service_account
-   ```
-
-3. **Create a database (if needed)**
-
-   ```bash
-   gcloud sql databases create zymtrace --instance=zymtrace-pg
-   ```
-
-4. **Create a service account for the Cloud SQL Auth Proxy**
-
-   ```bash
-   gcloud iam service-accounts create zymtrace-cloudsql-sa \
-     --display-name="Service Account for zymtrace Cloud SQL"
-   ```
-
-5. **Grant the necessary IAM roles to the service account**
-
-   ```bash
-   # Get the project ID
-   PROJECT_ID=$(gcloud config get-value project)
-
-   # Grant the Cloud SQL Client role
-   gcloud projects add-iam-policy-binding $PROJECT_ID \
-     --member="serviceAccount:zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com" \
-     --role="roles/cloudsql.client"
-
-   # Grant the IAM role to use the Cloud SQL instance
-   gcloud projects add-iam-policy-binding $PROJECT_ID \
-     --member="serviceAccount:zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com" \
-     --role="roles/cloudsql.instanceUser"
-   ```
-
-6. **Create a Kubernetes service account and link it to the GCP service account using Workload Identity**
-
-   ```bash
-   # Create a Kubernetes service account
-   kubectl create serviceaccount zymtrace-cloudsql-sa -n your-namespace
-
-   # Annotate the Kubernetes service account to use with Workload Identity
-   kubectl annotate serviceaccount zymtrace-cloudsql-sa \
-     --namespace your-namespace \
-     iam.gke.io/gcp-service-account=zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com
-
-   # Allow the Kubernetes ServiceAccount to impersonate the GCP service account
-   gcloud iam service-accounts add-iam-policy-binding \
-     --role="roles/iam.workloadIdentityUser" \
-     --member="serviceAccount:$PROJECT_ID.svc.id.goog[your-namespace/zymtrace-cloudsql-sa]" \
-     zymtrace-cloudsql-sa@$PROJECT_ID.iam.gserviceaccount.com
-   ```
-
-7. **Install the Helm chart with Google Cloud SQL configuration**
-
-   ```bash
-   helm install zymtrace ./charts/backend \
-     --set postgres.mode=gcp_cloudsql \
-     --set postgres.gcp_cloudsql.instance="$PROJECT_ID:us-central1:zymtrace-pg" \
-     --set postgres.gcp_cloudsql.user="postgres" \
-     --set postgres.gcp_cloudsql.database="zymtrace" \
-     --set postgres.gcp_cloudsql.serviceAccount="zymtrace-cloudsql-sa"
-   ```
-
-### Example values.yaml for Cloud SQL with IAM
+### With Google Cloud SQL
 
 ```yaml
 postgres:
   mode: "gcp_cloudsql"
   gcp_cloudsql:
-    instance: "my-project:us-central1:zymtrace-pg"  # PROJECT:REGION:INSTANCE
-    user: "postgres"
-    database: "zymtrace"
-    autoCreateDBs: true  # Enable automatic database creation
-    proxy:
-      serviceAccount: "zymtrace-cloudsql-sa"  # Kubernetes service account with Workload Identity
-      # Optional: customize resource limits
-      resources:
-        requests:
-          cpu: "100m"
-          memory: "128Mi"
-        limits:
-          cpu: "500m"
-          memory: "256Mi"
+    instance: "my-project:us-central1:zymtrace-pg"
+    user: "zt-db@my-project.iam"
+    workloadIdentity:
+      enabled: true
+    serviceAccount: "zymtrace-cloudsql-sa"
 ```
 
-## Object Storage Configuration
-
-This chart supports three types of object storage for storing symbol files:
-
-1. **Create mode**: Deploys MinIO within the cluster
-2. **Use existing**: Connects to external storage services (MinIO, AWS S3, or Google Cloud Storage)
-
-## ClickHouse Database Configuration
-
-This chart supports two modes for ClickHouse database deployment:
-
-1. **Create mode**: Deploys ClickHouse within the cluster (default)
-2. **Use existing**: Connects to an external ClickHouse instance
-
-### Using an Existing ClickHouse Instance
-Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
-
-As a result, when connecting to an external ClickHouse instance, you must provide a complete URL with protocol and port:
+### With External Object Storage
 
 ```yaml
-clickhouse:
-  mode: "use_existing"
-  use_existing:
-    host: "https://clickhouse.example.com:8443"  # Must include protocol and port
-    user: "your-username"
-    password: "your-password"
-    database: "zymtrace"  # Database prefix - actual DBs will be zymtrace_profiling and zymtrace_metrics
-    autoCreateDBs: false  # Enable automatic database creation if user has permissions
-```
-
-#### Host URL Requirements
-
-The `host` field must include:
-- **Protocol**: `http://` or `https://`
-- **Hostname/IP**: The ClickHouse server address
-- **Port**: The HTTP interface port (typically 8123 for HTTP, 8443 for HTTPS)
-
-
-**Valid examples:**
-- `http://clickhouse.internal:8123`
-- `https://my-clickhouse.example.com:8443`
-- `http://192.168.1.100:8123`
-
-
-#### Auto-Database Creation
-
-When `autoCreateDBs: true`, the chart will automatically create the required databases (`zymtrace_profiling` and `zymtrace_metrics`) if they don't exist. The database user must have `CREATE DATABASE` permissions for this to work.
-
-### Storage Types
-
-#### MinIO (Self-hosted)
-Use an existing MinIO instance:
-
-```yaml
-storage:
-  mode: "use_existing"
-  use_existing:
-    type: "minio"
-    minio:
-      endpoint: "https://minio.example.com"  # Must be a complete URL with http:// or https://
-      user: "your-access-key"
-      password: "your-secret-key"
-```
-
-#### Amazon S3
-Use AWS S3 buckets:
-
-```yaml
+# AWS S3
 storage:
   mode: "use_existing"
   use_existing:
     type: "s3"
     s3:
       region: "us-west-2"
-      accessKey: ""
-      secretKey: ""
-```
+      accessKey: "your-access-key"
+      secretKey: "your-secret-key"
 
-#### Google Cloud Storage (GCS)
-Use Google Cloud Storage buckets via S3-compatible API:
-
-```yaml
+# Or Google Cloud Storage
 storage:
   mode: "use_existing"
   use_existing:
     type: "gcs"
     gcs:
-      endpoint: "https://storage.googleapis.com"  # Optional, defaults to this value
-      accessKey: "GOOGXXYY..."  # GCS access key (HMAC key)
-      secretKey: "your-gcs-secret-key"  # GCS secret key (HMAC key)
+      accessKey: "your-hmac-access-key"
+      secretKey: "your-hmac-secret-key"
 ```
 
+## Network Security with NetworkPolicies
 
-### Storage Validation
+NetworkPolicies are **enabled by default** and restrict database access:
 
-The chart includes automatic validation and bucket connectivity checks:
+- **PostgreSQL**: Only accessible from `migrate`, `identity`, and `symdb` services
+- **ClickHouse**: Only accessible from `ingest` and `web` services
 
-- **Endpoint validation**: Ensures all endpoints start with `http://` or `https://`
-- **Storage type validation**: Only accepts `"minio"`, `"s3"`, or `"gcs"` as valid types
-- **Bucket connectivity**: Post-installation jobs verify bucket access and permissions
-
-During deployment, you'll see debug output showing the storage configuration being used:
-
-```
-Storage Type: GCS (S3-compatible)
-Bucket Name: zymtrace-symbols
-Endpoint: https://storage.googleapis.com
-```
-
-## PostgreSQL Database Auto-Creation
-
-For PostgreSQL databases, you can enable automatic database creation in Cloud SQL or on existing servers.
-
-### Enabling Auto-Creation
-
-To enable automatic database creation:
-
-1. Set `postgres.use_existing.autoCreateDBs` to `true` in your values.yaml or via --set:
-   ```yaml
-   postgres:
-     use_existing:
-       autoCreateDBs: true
-   ```
-
-   Or via Helm command:
-   ```
-   helm upgrade zymtrace ./charts/backend --set postgres.use_existing.autoCreateDBs=true
-   ```
-
-2. Specify the desired database name(s) in `postgres.use_existing.database`:
-   ```yaml
-   postgres:
-     use_existing:
-       database: "zymtrace"
-   ```
-
-3. The specified database will be automatically created on the PostgreSQL server if it doesn't already exist.
-
-### Important Notes
-
-- Auto-creation is only supported for PostgreSQL databases, not for other database types.
-- The specified database name must be a valid PostgreSQL identifier.
-- Ensure the database user has sufficient privileges to create databases.
-
-### Example values.yaml for Auto-Creation
+To disable (e.g., for Flannel clusters):
 
 ```yaml
-postgres:
-  mode: "gcp_cloudsql"
-  gcp_cloudsql:
-    instance: "my-project:us-central1:zymtrace-pg"  # PROJECT:REGION:INSTANCE
-    user: "postgres"
-    database: "zymtrace"
-    autoCreateDBs: true  # Enable automatic database creation
-    proxy:
-      serviceAccount: "zymtrace-cloudsql-sa"  # Kubernetes service account with Workload Identity
-      # Optional: customize resource limits
-      resources:
-        requests:
-          cpu: "100m"
-          memory: "128Mi"
-        limits:
-          cpu: "500m"
-          memory: "256Mi"
+services:
+  activateNetworkPolicies: false
 ```
 
-## Debugging Tips
+## Horizontal Pod Autoscaling (HPA)
 
-If you encounter issues during deployment or operation, consider the following debugging tips:
+Enable HPA for automatic scaling based on CPU/memory utilization:
 
-- **Check pod logs** for error messages or stack traces:
-  ```
-  kubectl logs <pod-name>
-  ```
+```yaml
+services:
+  common:
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 60
+      targetMemoryUtilizationPercentage: 70
+```
 
-- **Describe pods or services** to see detailed configuration and status:
-  ```
-  kubectl describe pod <pod-name>
-  kubectl describe service <service-name>
-  ```
+## Values
 
-- **Check Helm release status** and history for potential issues:
-  ```
-  helm status zymtrace
-  helm history zymtrace
-  ```
+### Global Configuration
 
-- **Review Kubernetes events** in the namespace for relevant warnings or errors:
-  ```
-  kubectl get events -n your-namespace
-  ```
+| Key | Type | Description |
+|-----|------|-------------|
+| global.licenseKey | string | Your zymtrace license key |
+| global.namePrefix | string | Prefix for all resource names |
+| global.imageRegistry | string | Default registry for all images |
+| global.appImageRegistry | string | Specific registry for zymtrace backend services |
+| global.registry.requirePullSecret | bool | Whether to use image pull secrets |
+| global.registry.username | string | Registry username |
+| global.registry.password | string | Registry password |
+| global.imagePullPolicy | string | Image pull policy |
+| global.dataRetentionDays | int | Data retention period in days (0 = forever) |
+| global.enableServiceMigration | bool | Use pre-upgrade hooks for service migration |
+| global.skipCapabilityCheck | bool | Skip API capability checks |
+| global.skipDBMigrations | bool | Skip running database migrations |
+| global.skipPostgresMigration | bool | Skip PostgreSQL migrations specifically |
+| global.skipClickHouseMigration | bool | Skip ClickHouse migrations specifically |
 
-- **Check Cloud SQL instance** and database connectivity:
-  ```
-  # Connect to Cloud SQL instance
-  gcloud sql connect zymtrace-pg --user=postgres
+### Authentication
 
-  # List databases
-  \l
+| Key | Type | Description |
+|-----|------|-------------|
+| auth.type | string | Authentication type: "basic", "oidc", "local", or "none" |
+| auth.info.displayName | string | Branding display name for login page |
+| auth.info.pictureUri | string | Custom logo URI for login page |
+| auth.serviceToken.enabled | bool | Enable service token authentication |
+| auth.basic.username | string | Basic auth username |
+| auth.basic.password | string | Basic auth password |
+| auth.admin.email | string | Admin user email |
+| auth.admin.password | string | Admin user password |
+| auth.admin.roles | list | Admin user roles |
+| auth.cookie.refreshMaxAgeSec | int | Cookie refresh max age in seconds |
+| auth.cookie.secure | bool | Use secure cookies |
+| auth.cookie.httpOnly | bool | Use HTTP-only cookies |
+| auth.validation.issuers | list | List of possible token issuers |
+| auth.validation.audiences | list | List of possible token audiences |
+| auth.validation.keys.privateKey | string | Private key for token signing (PEM format) |
+| auth.validation.keys.publicKey | string | Public key for token validation (PEM format) |
+| auth.oidc.provider.clientId | string | OIDC client ID |
+| auth.oidc.provider.clientSecret | string | OIDC client secret |
+| auth.oidc.provider.issuerUri | string | OIDC issuer URL |
+| auth.oidc.provider.redirectUri | string | OIDC redirect URI |
+| auth.oidc.provider.scopes | list | OIDC scopes |
 
-  # Check user privileges
-  \du
-  ```
+### Global Symbolization
 
-- **Inspect HPA configuration** and status:
-  ```
-  kubectl get hpa -n your-namespace
-  kubectl describe hpa <hpa-name> -n your-namespace
-  ```
+| Key | Type | Description |
+|-----|------|-------------|
+| globalSymbolization.enabled | bool | Enable global symbolization service |
+| globalSymbolization.config.bucketName | string | Global symbolization bucket name |
+| globalSymbolization.config.accessKey | string | Global symbolization access key |
+| globalSymbolization.config.secretKey | string | Global symbolization secret key |
+| globalSymbolization.config.region | string | Global symbolization region |
+| globalSymbolization.config.endpoint | string | Global symbolization endpoint |
 
-- **Review node placement** and scheduling:
-  ```
-  kubectl get pods -o wide
-  kubectl describe node <node-name>
-  ```
+### ClickHouse Configuration
 
-- **Review resource usage** and limits:
-  ```
-  kubectl top pods -n your-namespace
-  kubectl top nodes
-  ```
+| Key | Type | Description |
+|-----|------|-------------|
+| clickhouse.mode | string | Mode: "create" or "use_existing" |
+| clickhouse.nodeSelector | object | Node selector for ClickHouse |
+| clickhouse.tolerations | list | Tolerations for ClickHouse |
+| clickhouse.affinity | object | Affinity rules for ClickHouse |
+| clickhouse.create.image.repository | string | ClickHouse image repository |
+| clickhouse.create.image.tag | string | ClickHouse image tag |
+| clickhouse.create.config.user | string | ClickHouse username |
+| clickhouse.create.config.password | string | ClickHouse password |
+| clickhouse.create.config.database | string | ClickHouse database prefix |
+| clickhouse.create.service.http.port | int | ClickHouse HTTP port |
+| clickhouse.create.service.native.port | int | ClickHouse native port |
+| clickhouse.create.replicas | int | Number of ClickHouse replicas |
+| clickhouse.create.resources | object | ClickHouse resource requests/limits |
+| clickhouse.create.storage.type | string | Storage type: "persistent" or "empty_dir" |
+| clickhouse.create.storage.size | string | Storage size |
+| clickhouse.create.storage.className | string | Storage class name |
+| clickhouse.use_existing.host | string | External ClickHouse URL (http://host:8123) |
+| clickhouse.use_existing.user | string | External ClickHouse username |
+| clickhouse.use_existing.password | string | External ClickHouse password |
+| clickhouse.use_existing.database | string | External ClickHouse database prefix |
+| clickhouse.use_existing.clusterName | string | ClickHouse cluster name for distributed setups |
+| clickhouse.use_existing.autoCreateDBs | bool | Auto-create databases |
+
+### PostgreSQL Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| postgres.mode | string | Mode: "create", "use_existing", or "gcp_cloudsql" |
+| postgres.nodeSelector | object | Node selector for PostgreSQL |
+| postgres.tolerations | list | Tolerations for PostgreSQL |
+| postgres.affinity | object | Affinity rules for PostgreSQL |
+| postgres.create.image.repository | string | PostgreSQL image repository |
+| postgres.create.image.tag | string | PostgreSQL image tag |
+| postgres.create.config.user | string | PostgreSQL username |
+| postgres.create.config.password | string | PostgreSQL password |
+| postgres.create.service.port | int | PostgreSQL port |
+| postgres.create.replicas | int | Number of PostgreSQL replicas |
+| postgres.create.resources | object | PostgreSQL resource requests/limits |
+| postgres.create.storage.type | string | Storage type: "persistent" |
+| postgres.create.storage.size | string | Storage size |
+| postgres.create.storage.className | string | Storage class name |
+| postgres.use_existing.host | string | External PostgreSQL host:port |
+| postgres.use_existing.user | string | External PostgreSQL username |
+| postgres.use_existing.password | string | External PostgreSQL password |
+| postgres.use_existing.useIAM | string | Use IAM authentication (null or "aws") |
+| postgres.use_existing.awsRegion | string | AWS region for IAM auth |
+| postgres.use_existing.database | string | External PostgreSQL database prefix |
+| postgres.use_existing.secure | bool | Enable TLS/secure connection |
+| postgres.use_existing.autoCreateDBs | bool | Auto-create databases |
+| postgres.gcp_cloudsql.instance | string | Cloud SQL instance (PROJECT:REGION:INSTANCE) |
+| postgres.gcp_cloudsql.user | string | Cloud SQL IAM user |
+| postgres.gcp_cloudsql.database | string | Cloud SQL database prefix |
+| postgres.gcp_cloudsql.autoCreateDBs | bool | Auto-create databases |
+| postgres.gcp_cloudsql.privateIP | bool | Use private IP connectivity |
+| postgres.gcp_cloudsql.workloadIdentity.enabled | bool | Enable Workload Identity |
+| postgres.gcp_cloudsql.proxy.image.repository | string | Cloud SQL Proxy image repository |
+| postgres.gcp_cloudsql.proxy.image.tag | string | Cloud SQL Proxy image tag |
+| postgres.gcp_cloudsql.proxy.resources | object | Proxy resource requests/limits |
+| postgres.gcp_cloudsql.proxy.port | int | Proxy port |
+| postgres.gcp_cloudsql.serviceAccount | string | Kubernetes service account for Workload Identity |
+| postgres.gcp_cloudsql.replicas | int | Number of proxy replicas |
+| postgres.gcp_cloudsql.hpa.enabled | bool | Enable HPA for proxy |
+| postgres.gcp_cloudsql.hpa.minReplicas | int | Minimum proxy replicas |
+| postgres.gcp_cloudsql.hpa.maxReplicas | int | Maximum proxy replicas |
+
+### Object Storage Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| storage.mode | string | Mode: "create" or "use_existing" |
+| storage.nodeSelector | object | Node selector for MinIO |
+| storage.tolerations | list | Tolerations for MinIO |
+| storage.affinity | object | Affinity rules for MinIO |
+| storage.create.image.repository | string | MinIO image repository |
+| storage.create.image.tag | string | MinIO image tag |
+| storage.create.config.user | string | MinIO access key |
+| storage.create.config.password | string | MinIO secret key |
+| storage.create.service.api.port | int | MinIO API port |
+| storage.create.service.console.port | int | MinIO console port |
+| storage.create.replicas | int | Number of MinIO replicas |
+| storage.create.resources | object | MinIO resource requests/limits |
+| storage.create.storage.type | string | Storage type: "persistent" |
+| storage.create.storage.size | string | Storage size |
+| storage.create.storage.className | string | Storage class name |
+| storage.use_existing.type | string | External storage type: "minio", "s3", or "gcs" |
+| storage.use_existing.minio.endpoint | string | MinIO endpoint URL |
+| storage.use_existing.minio.user | string | MinIO access key |
+| storage.use_existing.minio.password | string | MinIO secret key |
+| storage.use_existing.s3.region | string | AWS S3 region |
+| storage.use_existing.s3.accessKey | string | AWS S3 access key |
+| storage.use_existing.s3.secretKey | string | AWS S3 secret key |
+| storage.use_existing.s3.useIAM | string | Use IAM authentication (null or "aws") |
+| storage.use_existing.gcs.endpoint | string | GCS S3-compatible endpoint |
+| storage.use_existing.gcs.accessKey | string | GCS HMAC access key |
+| storage.use_existing.gcs.secretKey | string | GCS HMAC secret key |
+| storage.buckets.symbols | string | Symbol storage bucket name |
+
+### Services Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| services.activateNetworkPolicies | bool | Enable NetworkPolicy creation |
+| services.healthProbes.liveness | bool | Enable liveness probes for all services |
+| services.healthProbes.readiness | bool | Enable readiness probes for all services |
+| services.common.imageTag | string | Common image tag for all services |
+| services.common.nodeSelector | object | Common node selector for all services |
+| services.common.tolerations | list | Common tolerations for all services |
+| services.common.affinity | object | Common affinity rules for all services |
+| services.common.env | object | Common environment variables for all services |
+| services.common.hpa.enabled | bool | Enable HPA for all services |
+| services.common.hpa.minReplicas | int | Default minimum replicas for HPA |
+| services.common.hpa.maxReplicas | int | Default maximum replicas for HPA |
+| services.common.hpa.targetCPUUtilizationPercentage | int | Default CPU target for HPA |
+| services.common.hpa.targetMemoryUtilizationPercentage | int | Default memory target for HPA |
+
+### Individual Service Configuration
+
+Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) supports:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| services.&lt;service&gt;.image.repository | string | Service image repository |
+| services.&lt;service&gt;.image.tag | string | Service image tag |
+| services.&lt;service&gt;.port | int | Service port |
+| services.&lt;service&gt;.replicas | int | Number of replicas |
+| services.&lt;service&gt;.resources | object | Resource requests/limits |
+| services.&lt;service&gt;.nodeSelector | object | Node selector (overrides common) |
+| services.&lt;service&gt;.tolerations | list | Tolerations (overrides common) |
+| services.&lt;service&gt;.affinity | object | Affinity rules (overrides common) |
+| services.&lt;service&gt;.env | object | Environment variables (service-specific) |
+| services.&lt;service&gt;.hpa.enabled | bool | Enable HPA for this service |
+| services.&lt;service&gt;.hpa.minReplicas | int | Minimum replicas for HPA |
+| services.&lt;service&gt;.hpa.maxReplicas | int | Maximum replicas for HPA |
+
+### Gateway Service
+
+| Key | Type | Description |
+|-----|------|-------------|
+| services.gateway.service.type | string | Service type: ClusterIP, NodePort, or LoadBalancer |
+| services.gateway.service.nodePort | string | Node port when service type is NodePort |
+| services.gateway.port | int | Gateway HTTP port |
+| services.gateway.portTrusted | int | Gateway trusted port |
+| services.gateway.adminPort | int | Gateway admin port |
+| services.gateway.xff_append | bool | Append X-Forwarded-For header |
+| services.gateway.xff_num_trusted_hops | int | Number of trusted hops for XFF |
+| services.gateway.mtls.enabled | bool | Enable mTLS for Gateway |
+| services.gateway.mtls.cert | string | Server certificate (PEM format) |
+| services.gateway.mtls.key | string | Server private key (PEM format) |
+| services.gateway.mtls.ca | string | CA certificate for client validation (PEM format) |
+| services.gateway.mtls.port | int | mTLS port |
+
+### Ingress Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| ingress.enabled | bool | Enable ingress creation |
+| ingress.className | string | Ingress class name (nginx, traefik, alb) |
+| ingress.annotations | object | Common ingress annotations |
+| ingress.hosts.gateway.enabled | bool | Enable gateway ingress |
+| ingress.hosts.gateway.host | string | Gateway hostname |
+| ingress.hosts.gateway.paths | list | Gateway paths |
+| ingress.hosts.gateway.annotations | object | Gateway-specific annotations |
+| ingress.hosts.gateway.mtls.enabled | bool | Enable mTLS ingress |
+| ingress.hosts.gateway.mtls.host | string | mTLS hostname |
+| ingress.hosts.gateway.mtls.paths | list | mTLS paths |
+| ingress.hosts.gateway.mtls.annotations | object | mTLS-specific annotations |
+| ingress.tls | list | TLS configuration |
+
+### RBAC Configuration
+
+| Key | Type | Description |
+|-----|------|-------------|
+| rbac.create | bool | Create RBAC resources |
+| rbac.rules | list | RBAC rules |
+| serviceAccount.annotations | object | Service account annotations |
 

@@ -112,7 +112,11 @@ envFrom:
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}
 {{- end }}
-{{- if or (eq $service "identity") (eq $service "symdb") }}
+{{- if and (eq $service "web") $root.Values.aiAssistant.enabled }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "ai-assistant-secrets") }}
+{{- end }}
+{{- if or (eq $service "identity") (eq $service "symdb") (eq $service "web") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "postgres-secrets") }}
 {{- end }}

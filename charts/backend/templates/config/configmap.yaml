@@ -94,29 +94,49 @@ data:
   # Service configurations - Postgres
   {{- if eq .Values.postgres.mode "create" }}
   IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.create.config.user | quote }}
+  IDENTITY__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
+
   SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.create.config.user | quote }}
   SYMDB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
-  IDENTITY__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
+
+  WEB__POSTGRES__USERNAME: {{ .Values.postgres.create.config.user | quote }}
+  WEB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
+
   {{- else if eq .Values.postgres.mode "gcp_cloudsql" }}
   IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
-  SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
-  SYMDB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
   IDENTITY__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
   IDENTITY__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_identity
-  SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_symdb
   IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.gcp_cloudsql.autoCreateDBs | default false | quote }}
+
+  SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
+  SYMDB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
+  SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_symdb
   SYMDB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.gcp_cloudsql.autoCreateDBs | default false | quote }}
+
+  WEB__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
+  WEB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.gcp_cloudsql.proxy.port }}"
+  WEB__POSTGRES__DATABASE: {{ .Values.postgres.gcp_cloudsql.database }}_web
+  WEB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.gcp_cloudsql.autoCreateDBs | default false | quote }}
+
   {{- else if eq .Values.postgres.mode "use_existing" }}
   IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.use_existing.user | quote }}
   IDENTITY__POSTGRES__ADDR: {{ .Values.postgres.use_existing.host | quote }}
   IDENTITY__POSTGRES__SECURE: {{ .Values.postgres.use_existing.secure | quote }}
   IDENTITY__POSTGRES__DATABASE: {{ .Values.postgres.use_existing.database }}_identity
+  IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
+
   SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.use_existing.user | quote }}
   SYMDB__POSTGRES__ADDR: {{ .Values.postgres.use_existing.host | quote }}
   SYMDB__POSTGRES__SECURE: {{ .Values.postgres.use_existing.secure | quote }}
   SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.use_existing.database }}_symdb
-  IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
   SYMDB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
+
+  WEB__POSTGRES__USERNAME: {{ .Values.postgres.use_existing.user | quote }}
+  WEB__POSTGRES__ADDR: {{ .Values.postgres.use_existing.host | quote }}
+  WEB__POSTGRES__SECURE: {{ .Values.postgres.use_existing.secure | quote }}
+  WEB__POSTGRES__DATABASE: {{ .Values.postgres.use_existing.database }}_web
+  WEB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.use_existing.autoCreateDBs | default false | quote }}
+
   {{- end }}
 
   # Service endpoints

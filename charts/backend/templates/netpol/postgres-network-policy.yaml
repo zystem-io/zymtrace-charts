@@ -41,4 +41,12 @@ spec:
     ports:
     - protocol: TCP
       port: {{ if eq .Values.postgres.mode "gcp_cloudsql" }}{{ .Values.postgres.gcp_cloudsql.proxy.port }}{{ else }}{{ .Values.postgres.create.service.port }}{{ end }}
+  # Allow access from web service
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ include "zymtrace.resourceName" (list . "web") }}
+    ports:
+    - protocol: TCP
+      port: {{ if eq .Values.postgres.mode "gcp_cloudsql" }}{{ .Values.postgres.gcp_cloudsql.proxy.port }}{{ else }}{{ .Values.postgres.create.service.port }}{{ end }}
 {{- end }}
