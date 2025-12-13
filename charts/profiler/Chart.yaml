@@ -4,6 +4,7 @@ description: Deploy zymtrace's profiler agent
 type: application
 version: 25.12.5
 appVersion: "25.12.5"
+icon: https://helm.zystem.io/zymtrace-logo-255x255.png
 keywords:
   - zymtrace
   - profiler
@@ -14,5 +15,3 @@ keywords:
 home: https://docs.zymtrace.com
 sources:
   - https://github.com/zystem-io/zymtrace-charts/
-annotations:
-  artifacthub.io/logoURL: https://helm.zystem.io/zymtrace-logo-255x255.png
