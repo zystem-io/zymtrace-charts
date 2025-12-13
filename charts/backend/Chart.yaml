@@ -12,4 +12,6 @@ keywords:
   - CPU
 home: https://docs.zymtrace.com
 sources:
-  - https://github.com/zystem-io/deploy-zymtrace
+  - https://github.com/zystem-io/zymtrace-charts/
+annotations:
+  artifacthub.io/logoURL: https://helm.zystem.io/zymtrace-logo-255x255.png
