@@ -549,6 +549,8 @@ services:
       #   value: "symdb"
       #   effect: "NoSchedule"
     env: {}
+      # set to increase max symbfile size if needed, useful for profiling CLICKHOUSE or other exec binaries
+      # SYMDB__MAX_SYMBFILE_SIZE=157286400 
       # RUST_LOG: "debug"
       # SYMDB__DEBUGINFOD_SERVERS: "https://debuginfod.ubuntu.com"
     affinity: {}

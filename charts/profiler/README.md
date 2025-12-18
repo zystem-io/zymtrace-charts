@@ -1,6 +1,6 @@
 # profiler
 
-![Version: 25.12.4](https://img.shields.io/badge/Version-25.12.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.12.4](https://img.shields.io/badge/AppVersion-25.12.5-informational?style=flat-square)
+![Version: 25.12.4](https://img.shields.io/badge/Version-25.12.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.12.4](https://img.shields.io/badge/AppVersion-25.12.6-informational?style=flat-square)
 
 Deploy zymtrace's profiler agent - a lightweight, low-overhead continuous profiler for CPU and GPU workloads.
 

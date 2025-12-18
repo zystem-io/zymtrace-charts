@@ -121,16 +121,19 @@ Handles dynamic cluster_id tag injection when running as a subchart
 {{- end -}}
 {{- $tagsHandled := false -}}
 {{- range .Values.profiler.args }}
-{{- if hasPrefix "-tags=" . }}
+{{- if . }}
+{{- $arg := . | toString }}
+{{- if hasPrefix "-tags=" $arg }}
 {{- $tagsHandled = true }}
 {{- if $clusterTag }}
-{{- $existingTags := trimPrefix "-tags=" . }}
+{{- $existingTags := trimPrefix "-tags=" $arg }}
 - {{ printf "-tags=%s;%s" $existingTags $clusterTag | quote }}
 {{- else }}
-- {{ . | quote }}
+- {{ $arg | quote }}
 {{- end }}
 {{- else }}
-- {{ . | quote }}
+- {{ $arg | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if and $clusterTag (not $tagsHandled) }}

@@ -17,7 +17,7 @@ Namespace:   {{ .Release.Namespace }}
     $ kubectl logs -f -n {{ .Release.Namespace }} -l app=zymtrace,component=profiler  
 
 📊 Agent Status:
-Collection endpoint: {{ range .Values.profiler.args }}{{ if contains "collection-agent" . }}{{ . }}{{ end }}{{ end }}
+Collection endpoint: {{ range .Values.profiler.args }}{{ if . }}{{ $arg := . | toString }}{{ if contains "collection-agent" $arg }}{{ $arg }}{{ end }}{{ end }}{{ end }}
 {{- if .Values.profiler.nodeSelector }}
 Node Selection:
 {{- range $key, $value := .Values.profiler.nodeSelector }}
