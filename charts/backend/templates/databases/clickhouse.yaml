@@ -41,19 +41,19 @@ spec:
                 - clickhouse-client
                 - --query
                 - SELECT 1
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 5
+            initialDelaySeconds: {{ .Values.clickhouse.create.healthProbes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.clickhouse.create.healthProbes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.clickhouse.create.healthProbes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.clickhouse.create.healthProbes.liveness.failureThreshold }}
           readinessProbe:
             exec:
               command:
                 - clickhouse-client
                 - --query
                 - SELECT 1
-            initialDelaySeconds: 50
-            periodSeconds: 5
-            timeoutSeconds: 3
+            initialDelaySeconds: {{ .Values.clickhouse.create.healthProbes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.clickhouse.create.healthProbes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.clickhouse.create.healthProbes.readiness.timeoutSeconds }}
       volumes:
         - name: data
           {{- include "zymtrace.storage" (list $ "clickhouse") | nindent 10 }}

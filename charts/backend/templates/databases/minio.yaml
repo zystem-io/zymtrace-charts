@@ -46,18 +46,18 @@ spec:
                 - mc
                 - ready
                 - local
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 3
+            initialDelaySeconds: {{ .Values.storage.create.healthProbes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.storage.create.healthProbes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.storage.create.healthProbes.liveness.timeoutSeconds }}
           readinessProbe:
             exec:
               command:
                 - mc
                 - ready
                 - local
-            initialDelaySeconds: 50
-            periodSeconds: 5
-            timeoutSeconds: 3
+            initialDelaySeconds: {{ .Values.storage.create.healthProbes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.storage.create.healthProbes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.storage.create.healthProbes.readiness.timeoutSeconds }}
       volumes:
         - name: data
           {{- include "zymtrace.storage" (list $ "minio") | nindent 10 }}

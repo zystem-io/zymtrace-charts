@@ -208,6 +208,16 @@ clickhouse:
       type: "persistent"  # "persistent" or "empty_dir"
       size: 30Gi
       className: ""
+    healthProbes:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 5
+      readiness:
+        initialDelaySeconds: 50
+        periodSeconds: 5
+        timeoutSeconds: 3
   use_existing:
     host: ""  # Must include protocol and port: http://myhost:8123 or https://myhost:8443
               # NOTE: Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
@@ -346,6 +356,15 @@ storage:
       type: "persistent"
       size: 20Gi
       className: ""
+    healthProbes:
+      liveness:
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 3
+      readiness:
+        initialDelaySeconds: 50
+        periodSeconds: 5
+        timeoutSeconds: 3
   use_existing:
     type: "minio"  # "minio", "s3", or "gcs"
     minio:
