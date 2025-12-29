@@ -2,7 +2,7 @@ apiVersion: v2
 name: backend
 description: Deploy zymtrace's self-hosted services
 type: application
-version: 25.12.6
+version: 25.12.7
 appVersion: "25.12.6"
 icon: https://helm.zystem.io/zymtrace-logo-255x255.png
 keywords:
