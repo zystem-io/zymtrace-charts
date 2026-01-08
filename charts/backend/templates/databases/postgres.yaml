@@ -33,6 +33,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+              {{- if and (eq .Values.postgres.create.storage.type "existing_pvc") (.Values.postgres.create.storage.existing_pvc.subPath) }}
+              subPath: {{ .Values.postgres.create.storage.existing_pvc.subPath }}
+              {{- end }}
           livenessProbe:
             exec:
               command:

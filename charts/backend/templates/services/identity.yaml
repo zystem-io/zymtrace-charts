@@ -70,6 +70,7 @@ metadata:
     {{- include "zymtrace.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
+  clusterIP: None # headless -- exposes all downstream IPs to envoy
   ports:
     - port: {{ .Values.services.identity.port }}
       targetPort: http

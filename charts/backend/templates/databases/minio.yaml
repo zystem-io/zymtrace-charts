@@ -40,6 +40,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+              {{- if and (eq .Values.storage.create.storage.type "existing_pvc") (.Values.storage.create.storage.existing_pvc.subPath) }}
+              subPath: {{ .Values.storage.create.storage.existing_pvc.subPath }}
+              {{- end }}
           livenessProbe:
             exec:
               command:

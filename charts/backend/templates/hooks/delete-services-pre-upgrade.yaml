@@ -1,0 +1,147 @@
+{{- if include "zymtrace.needsServiceMigration" . }}
+{{- /*
+Service Migration Hook - Auto-detected
+
+This creates temporary hook-based services that Helm will automatically delete.
+These services have "pre-upgrade" hook annotations, so Helm creates them during
+the hook phase and deletes them before the main upgrade phase.
+
+This forces deletion of existing non-headless services without requiring RBAC permissions.
+The real permanent services (without hook annotations) are then created in the main upgrade phase.
+
+Migration is automatically triggered when:
+- An existing service has a non-None clusterIP (needs migration to headless)
+- global.migrateServicesToHeadless is not explicitly set to false
+- global.skipCapabilityCheck is false (not in helm template mode)
+*/ -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "identity") }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.services.identity.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.services.identity.portHealth }}
+      targetPort: http-health
+      protocol: TCP
+      name: http-health
+  selector:
+    app: {{ include "zymtrace.resourceName" (list . "identity") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "ingest") }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.services.ingest.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.services.ingest.portTrusted }}
+      targetPort: http-trusted
+      protocol: TCP
+      name: http-trusted
+    - port: {{ .Values.services.ingest.portHealth }}
+      targetPort: http-health
+      protocol: TCP
+      name: http-health
+  selector:
+    app: {{ include "zymtrace.resourceName" (list . "ingest") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "symdb") }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.services.symdb.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.services.symdb.portTrusted }}
+      targetPort: http-trusted
+      protocol: TCP
+      name: http-trusted
+    - port: {{ .Values.services.symdb.portHealth }}
+      targetPort: http-health
+      protocol: TCP
+      name: http-health
+  selector:
+    app: {{ include "zymtrace.resourceName" (list . "symdb") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "ui") }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.services.ui.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "zymtrace.resourceName" (list . "ui") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list . "web") }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-upgrade"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: {{ .Values.services.web.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "zymtrace.resourceName" (list . "web") }}
+{{- end }}

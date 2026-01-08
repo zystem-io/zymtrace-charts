@@ -35,6 +35,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/clickhouse
+              {{- if and (eq .Values.clickhouse.create.storage.type "existing_pvc") (.Values.clickhouse.create.storage.existing_pvc.subPath) }}
+              subPath: {{ .Values.clickhouse.create.storage.existing_pvc.subPath }}
+              {{- end }}
           livenessProbe:
             exec:
               command:

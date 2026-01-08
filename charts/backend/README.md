@@ -1,6 +1,6 @@
 # backend
 
-![Version: 25.12.4](https://img.shields.io/badge/Version-25.12.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.12.4](https://img.shields.io/badge/AppVersion-25.12.6-informational?style=flat-square)
+![Version: 26.1.0](https://img.shields.io/badge/Version-26.1.0) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.1.0](https://img.shields.io/badge/AppVersion-26.1.0)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -207,7 +207,7 @@ services:
 | global.registry.password | string | Registry password |
 | global.imagePullPolicy | string | Image pull policy |
 | global.dataRetentionDays | int | Data retention period in days (0 = forever) |
-| global.enableServiceMigration | bool | Use pre-upgrade hooks for service migration |
+| global.migrateServicesToHeadless | bool | Use pre-upgrade hooks for service migration |
 | global.skipCapabilityCheck | bool | Skip API capability checks |
 | global.skipDBMigrations | bool | Skip running database migrations |
 | global.skipPostgresMigration | bool | Skip PostgreSQL migrations specifically |
@@ -270,6 +270,8 @@ services:
 | clickhouse.create.storage.type | string | Storage type: "persistent" or "empty_dir" |
 | clickhouse.create.storage.size | string | Storage size |
 | clickhouse.create.storage.className | string | Storage class name |
+| clickhouse.create.storage.existing_pvc.pvcName | string | Name of existing PVC to use |
+| clickhouse.create.storage.existing_pvc.subPath | string | Optional: subdirectory within PVC (useful for shared storage) |
 | clickhouse.use_existing.host | string | External ClickHouse URL (http://host:8123) |
 | clickhouse.use_existing.user | string | External ClickHouse username |
 | clickhouse.use_existing.password | string | External ClickHouse password |
@@ -295,6 +297,8 @@ services:
 | postgres.create.storage.type | string | Storage type: "persistent" |
 | postgres.create.storage.size | string | Storage size |
 | postgres.create.storage.className | string | Storage class name |
+| postgres.create.storage.existing_pvc.pvcName | string | Name of existing PVC to use |
+| postgres.create.storage.existing_pvc.subPath | string | Optional: subdirectory within PVC (useful for shared storage) |
 | postgres.use_existing.host | string | External PostgreSQL host:port |
 | postgres.use_existing.user | string | External PostgreSQL username |
 | postgres.use_existing.password | string | External PostgreSQL password |
@@ -338,6 +342,8 @@ services:
 | storage.create.storage.type | string | Storage type: "persistent" |
 | storage.create.storage.size | string | Storage size |
 | storage.create.storage.className | string | Storage class name |
+| storage.create.storage.existing_pvc.pvcName | string | Name of existing PVC to use |
+| storage.create.storage.existing_pvc.subPath | string | Optional: subdirectory within PVC (useful for shared storage) |
 | storage.use_existing.type | string | External storage type: "minio", "s3", or "gcs" |
 | storage.use_existing.minio.endpoint | string | MinIO endpoint URL |
 | storage.use_existing.minio.user | string | MinIO access key |

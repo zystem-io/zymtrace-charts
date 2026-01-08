@@ -301,6 +301,9 @@ persistentVolumeClaim:
   claimName: {{ include "zymtrace.resourceName" (list $root $component) }}
 {{- else if eq .type "empty_dir" }}
 emptyDir: {}
+{{- else if eq .type "existing_pvc" }}
+persistentVolumeClaim:
+  claimName: {{ .existing_pvc.pvcName }}
 {{- else }}
 {{- fail "unsupported storage type" }}
 {{- end }}
@@ -460,4 +463,41 @@ affinity:
 {{- end -}}
 {{- end -}}
 {{- if $serviceReadiness -}}true{{- end -}}
+{{- end }}
+
+{{/*
+Check if service migration is needed.
+Auto-detects if any existing service has a non-headless ClusterIP that needs migration.
+Returns "true" if migration hooks should be enabled.
+
+The logic that finally worked is: 
+- If skipCapabilityCheck is true (helm template mode), skip migration
+- If migrateServicesToHeadless is explicitly set to false, skip migration
+- Otherwise, check if any service exists with a non-None clusterIP
+*/}}
+{{- define "zymtrace.needsServiceMigration" -}}
+{{- $needsMigration := false -}}
+{{- /* Skip if capability check is disabled (helm template operations) */ -}}
+{{- if .Values.global.skipCapabilityCheck -}}
+{{- $needsMigration = false -}}
+{{- /* Respect explicit disable of migration */ -}}
+{{- else if and (hasKey .Values.global "migrateServicesToHeadless") (eq .Values.global.migrateServicesToHeadless false) -}}
+{{- $needsMigration = false -}}
+{{- else -}}
+{{- /* Check each service for non-headless ClusterIP */ -}}
+{{- $services := list "identity" "ingest" "symdb" "ui" "web" -}}
+{{- range $svc := $services -}}
+{{- $svcName := printf "%s-%s" $.Values.global.namePrefix $svc -}}
+{{- $existingSvc := lookup "v1" "Service" $.Release.Namespace $svcName -}}
+{{- if $existingSvc -}}
+{{- /* Service exists - check if it has a non-None clusterIP */ -}}
+{{- if and $existingSvc.spec $existingSvc.spec.clusterIP -}}
+{{- if ne $existingSvc.spec.clusterIP "None" -}}
+{{- $needsMigration = true -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if $needsMigration -}}true{{- end -}}
 {{- end }}

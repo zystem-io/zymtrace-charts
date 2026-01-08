@@ -10,12 +10,40 @@ global:
     password: "" # Required: provide via --set
   imagePullPolicy: IfNotPresent
   dataRetentionDays: 30  # Default retention period in days. 0 = forever.
-  enableServiceMigration: false # When true: uses pre-upgrade hooks for service migration. When false: standard ClusterIP services (default)
+  migrateServicesToHeadless: true # Auto-detects and migrates services from ClusterIP to headless. Set to false to disable.
   skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
   skipDBMigrations: false  # Set to true to skip running database migrations during install/upgrade (useful for quick rollbacks or when migrations are not needed)
   skipPostgresMigration: false  # Set to true to skip PostgreSQL migrations specifically (sets SKIP_PSQL_MIGRATE=true)
   skipClickHouseMigration: false  # Set to true to skip ClickHouse migrations specifically (sets SKIP_CH_MIGRATE=true)
 
+# AI Assistant Configuration
+# Supports multiple AI providers: Anthropic Claude, Google Gemini, and OpenAI ChatGPT
+aiAssistant:
+  enabled: false  # Set to true to enable AI Assistant features
+  
+  # Anthropic Claude Configuration
+  # Get your API key from: https://console.anthropic.com/
+  anthropic:
+    apiKey: ""  # Your Anthropic API key (sets WEB__ASSISTANT__API_KEYS__ANTHROPIC)
+  
+  # Google Gemini Configuration
+  # Get your API key from: https://aistudio.google.com/apikey
+  gemini:
+    apiKey: ""  # Your Google Gemini API key (sets WEB__ASSISTANT__API_KEYS__GEMINI)
+  
+  # OpenAI Configuration
+  # Get your API key from: https://platform.openai.com/api-keys
+  openai:
+    apiKey: ""  # Your OpenAI API key (sets WEB__ASSISTANT__API_KEYS__OPENAI)
+
+  # Custom LLM Configuration
+  # Use this for self-hosted or third-party LLM providers with OpenAI-compatible APIs
+  customLLM:
+    url: ""      # Your custom LLM endpoint URL. e.g https://example.com/v1/chat/completions
+    apiKey: ""   # Your custom LLM API key 
+    models: ""   # Comma-separated list of available models, e.g openai/gpt-oss-20b,nvidia/DeepSeek-V3-0324-NVFP4
+
+# Authentication Configuration
 auth:
   # Authentication type: "basic", "oidc", "local", or "none"
   # This controls which authentication method is used for Gateway and Web services
@@ -141,29 +169,19 @@ globalSymbolization:
     region: ""
     endpoint: ""
 
-# AI Assistant Configuration
-# Enable AI-powered features in the zymtrace UI
-# Supports multiple AI providers: Anthropic Claude, Google Gemini, and OpenAI ChatGPT
-# To enable, provide API keys for your chosen provider(s)
-aiAssistant:
-  enabled: false  # Set to true to enable AI Assistant features
-  
-  # Anthropic Claude Configuration
-  # Get your API key from: https://console.anthropic.com/
-  anthropic:
-    apiKey: ""  # Your Anthropic API key (sets WEB__ASSISTANT__API_KEYS__ANTHROPIC)
-  
-  # Google Gemini Configuration
-  # Get your API key from: https://aistudio.google.com/apikey
-  gemini:
-    apiKey: ""  # Your Google Gemini API key (sets WEB__ASSISTANT__API_KEYS__GEMINI)
-  
-  # OpenAI Configuration
-  # Get your API key from: https://platform.openai.com/api-keys
-  openai:
-    apiKey: ""  # Your OpenAI API key (sets WEB__ASSISTANT__API_KEYS__OPENAI)
-
 # Database Configurations
+# 
+# Storage Type Options for ClickHouse, PostgreSQL, and MinIO:
+# - "persistent": Creates a new PVC for persistent storage (default)
+# - "empty_dir": Uses emptyDir for temporary storage (data lost on pod restart)
+# - "existing_pvc": Uses an existing PVC (specify pvcName in existing_pvc.pvcName)
+#
+# Example using existing volumes:
+#   storage:
+#     type: "existing_pvc"
+#     existing:
+#       pvcName: "my-existing-pvc"
+#
 clickhouse:
   mode: "create"  # "create" or "use_existing"
   nodeSelector: {}
@@ -205,9 +223,13 @@ clickhouse:
         cpu: "2000m"
         memory: "4Gi"
     storage:
-      type: "persistent"  # "persistent" or "empty_dir"
+      type: "persistent"  # "persistent", "empty_dir", or "existing_pvc"
       size: 30Gi
       className: ""
+      # Configuration for existing volumes (only used when type is "existing_pvc")
+      existing_pvc:
+        pvcName: ""  # Name of existing PVC to use
+        subPath: "clickhouse"  # Optional: subdirectory within PVC (useful for shared storage)
     healthProbes:
       liveness:
         initialDelaySeconds: 60
@@ -267,9 +289,13 @@ postgres:
         cpu: "1000m"
         memory: "1Gi"
     storage:
-      type: "persistent"
+      type: "persistent"  # "persistent", "empty_dir", or "existing_pvc"
       size: 20Gi
       className: ""
+      # Configuration for existing volumes (only used when type is "existing_pvc")
+      existing_pvc:
+        pvcName: ""  # Name of existing PVC to use
+        subPath: "postgres/pgdata"  # Optional: subdirectory within PVC, must match this format: postgres/pgdata
   use_existing:
     host: "" # host:port
     user: ""
@@ -353,9 +379,13 @@ storage:
         cpu: "1000m"
         memory: "1Gi"
     storage:
-      type: "persistent"
+      type: "persistent"  # "persistent", "empty_dir", or "existing_pvc"
       size: 20Gi
       className: ""
+      # Configuration for existing volumes (only used when type is "existing_pvc")
+      existing_pvc:
+        pvcName: ""  # Name of existing PVC to use
+        subPath: "minio"  # Optional: subdirectory within PVC (useful for shared storage)
     healthProbes:
       liveness:
         initialDelaySeconds: 60
