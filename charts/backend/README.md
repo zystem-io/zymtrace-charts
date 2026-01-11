@@ -1,6 +1,6 @@
 # backend
 
-![Version: 26.1.0](https://img.shields.io/badge/Version-26.1.0) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.1.0](https://img.shields.io/badge/AppVersion-26.1.0)
+![Chart: 26.1.0](https://img.shields.io/badge/Chart-26.1.0-blue) ![AppVersion: 26.1.0](https://img.shields.io/badge/AppVersion-26.1.0-blue)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
