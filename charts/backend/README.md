@@ -163,6 +163,35 @@ storage:
       secretKey: "your-hmac-secret-key"
 ```
 
+### With AI Assistant
+
+```yaml
+aiAssistant:
+  enabled: true
+
+  # Configure one or more AI providers
+  anthropic:
+    apiKey: "sk-ant-api03-..."
+
+  gemini:
+    apiKey: "AIzaSy..."
+
+  openai:
+    apiKey: "sk-proj-..."
+
+  # Optional: Custom LLM endpoint (e.g., Groq, Together AI, self-hosted)
+  customLLM:
+    url: "https://your-llm-endpoint.com/v1/chat/completions"
+    apiKey: "your-custom-api-key"
+    models: "model-1,model-2"
+
+  # Optional: Advanced configuration
+  defaultProvider: "anthropic"  # Which provider to use by default
+  defaultModel: "claude-sonnet-4-5"
+  requestSizeLimit: 20971520  # 20 MiB
+  sessionClearFreq: 3600  # 1 hour
+```
+
 ## Network Security with NetworkPolicies
 
 NetworkPolicies are **enabled by default** and restrict database access:
@@ -238,6 +267,25 @@ services:
 | auth.oidc.provider.issuerUri | string | OIDC issuer URL |
 | auth.oidc.provider.redirectUri | string | OIDC redirect URI |
 | auth.oidc.provider.scopes | list | OIDC scopes |
+
+### AI Assistant Configuration
+
+| Key | Type | Description | Default |
+|-----|------|-------------|---------|
+| aiAssistant.enabled | bool | Enable AI Assistant features | `false` |
+| aiAssistant.anthropic.apiKey | string | Anthropic Claude API key | - |
+| aiAssistant.gemini.apiKey | string | Google Gemini API key | - |
+| aiAssistant.openai.apiKey | string | OpenAI API key | - |
+| aiAssistant.customLLM.url | string | Custom LLM endpoint URL (OpenAI-compatible) | - |
+| aiAssistant.customLLM.apiKey | string | Custom LLM API key | - |
+| aiAssistant.customLLM.models | string | Comma-separated list of available custom models | - |
+| aiAssistant.requestSizeLimit | int | Maximum request size for AI queries (bytes) | `20971520` (20 MiB) |
+| aiAssistant.defaultProvider | string | Default AI provider (`anthropic`, `gemini`, `openai`, `custom`) | `anthropic` |
+| aiAssistant.defaultModel | string | Default model for the provider | `claude-sonnet-4-5` |
+| aiAssistant.sessionClearFreq | int | Session cleanup frequency (seconds) | `3600` (1 hour) |
+| aiAssistant.mcpServers | list | Internal MCP server configurations | See values.yaml |
+
+For detailed AI Assistant configuration, see the [AI Assistant documentation](https://docs.zymtrace.com/ai-assistant/configure-ai-assistant).
 
 ### Global Symbolization
 

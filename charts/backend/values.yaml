@@ -40,8 +40,37 @@ aiAssistant:
   # Use this for self-hosted or third-party LLM providers with OpenAI-compatible APIs
   customLLM:
     url: ""      # Your custom LLM endpoint URL. e.g https://example.com/v1/chat/completions
-    apiKey: ""   # Your custom LLM API key 
+    apiKey: ""   # Your custom LLM API key
     models: ""   # Comma-separated list of available models, e.g openai/gpt-oss-20b,nvidia/DeepSeek-V3-0324-NVFP4
+
+  # Maximum request size for AI assistant queries (in bytes)
+  # Default: 20971520 (20 MiB)
+  requestSizeLimit: 20971520
+
+  # Default AI provider to use when multiple are configured
+  # Options: anthropic, gemini, openai, custom
+  # Default: anthropic
+  defaultProvider: "anthropic"
+
+  # Default model for the selected provider
+  # Examples: claude-sonnet-4-5, gemini-2.5-flash, gpt-5-2
+  # Default: claude-sonnet-4-5
+  defaultModel: "claude-sonnet-4-5"
+
+  # Session cleanup frequency (in seconds)
+  # How often to remove unused assistant sessions
+  # Default: 3600 (1 hour)
+  sessionClearFreq: 3600
+
+  # Internal MCP Server Configuration
+  # Configure internal MCP servers for assistant integration
+  # Note: Most users don't need to modify this. The defaults work for standard deployments.
+  mcpServers:
+    - name: zymtrace
+      # Internal endpoint will be set via environment variable in configmap
+      # This is a placeholder that gets overridden by the deployment
+      endpoint: ""
+      authToken: "internal"
 
 # Authentication Configuration
 auth:

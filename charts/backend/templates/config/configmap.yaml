@@ -207,6 +207,26 @@ data:
   INGEST__LICENSE__KEY: {{ .Values.global.licenseKey | quote }}
   {{- end }}
 
+  # AI Assistant Configuration
+  {{- if .Values.aiAssistant.enabled }}
+  WEB__ASSISTANT__REQUEST_SIZE_LIMIT: {{ .Values.aiAssistant.requestSizeLimit | default 20971520 | int | quote }}
+  WEB__ASSISTANT__DEFAULT_PROVIDER: {{ .Values.aiAssistant.defaultProvider | default "anthropic" | quote }}
+  WEB__ASSISTANT__DEFAULT_MODEL: {{ .Values.aiAssistant.defaultModel | default "claude-sonnet-4-5" | quote }}
+  WEB__SESSION_CLEAR_FREQ: {{ .Values.aiAssistant.sessionClearFreq | default 3600 | int | quote }}
+  {{- if .Values.aiAssistant.mcpServers }}
+  {{- $webServiceUrl := printf "http://%s:%v/mcp" (include "zymtrace.resourceName" (list $ "web")) (.Values.services.web.port | int) }}
+  {{- $mcpServers := list }}
+  {{- range .Values.aiAssistant.mcpServers }}
+  {{- $endpoint := .endpoint }}
+  {{- if eq $endpoint "" }}
+  {{- $endpoint = $webServiceUrl }}
+  {{- end }}
+  {{- $mcpServers = append $mcpServers (dict "name" .name "endpoint" $endpoint "auth-token" .authToken) }}
+  {{- end }}
+  WEB__ASSISTANT__MCP_SERVERS: {{ $mcpServers | toJson | quote }}
+  {{- end }}
+  {{- end }}
+
   # Common environment variables
   {{- if hasKey .Values.services "common" }}
   {{- if hasKey .Values.services.common "env" }}
