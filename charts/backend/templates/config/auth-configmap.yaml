@@ -56,6 +56,45 @@ data:
   {{- end }}
 
   {{- /*
+  Validate: LoadBalancer with OIDC/LOCAL auth requires explicit gateway host
+  The LoadBalancer hostname is assigned by the cloud provider AFTER deployment,
+  but the issuer URL is needed during migration. Users must deploy once to get
+  the hostname, then add it to their values file.
+  */}}
+  {{- if and (or (eq $authType "OIDC") (eq $authType "LOCAL")) (eq (default "ClusterIP" .Values.services.gateway.service.type) "LoadBalancer") (not .Values.ingress.hosts.gateway.host) }}
+    {{ fail `
+================================================================================
+ERROR: LoadBalancer with local/oidc auth requires gateway host configuration
+
+When using services.gateway.service.type: LoadBalancer with auth.type: local or oidc,
+you must provide the gateway host URL for JWT token issuer configuration.
+
+WORKAROUND (two-phase deployment):
+
+1. First, deploy with auth.type: none or auth.type: basic to create the LoadBalancer:
+   
+   auth:
+     type: none  # or basic
+
+2. Get the LoadBalancer hostname:
+   
+   kubectl get svc -n <namespace> <prefix>-gateway -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+3. Add the hostname to your values file and redeploy with your desired auth type:
+   
+   auth:
+     type: local  # or oidc
+   
+   ingress:
+     hosts:
+       gateway:
+         host: "your-loadbalancer-hostname.elb.amazonaws.com"
+
+================================================================================
+` }}
+  {{- end }}
+
+  {{- /*
   if the auth type is OIDC or LOCAL, then configure JWT validation:
   - issuers and audiences
   - signing keys

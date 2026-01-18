@@ -30,6 +30,8 @@ spec:
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       {{- if eq .Values.postgres.mode "gcp_cloudsql" }}
       serviceAccountName: {{ .Values.postgres.gcp_cloudsql.serviceAccount }}
+      {{- else if eq .Values.postgres.mode "aws_aurora" }}
+      serviceAccountName: {{ .Values.postgres.aws_aurora.serviceAccount }}
       {{- end }}
       initContainers:
         {{- if eq .Values.clickhouse.mode "create" }}

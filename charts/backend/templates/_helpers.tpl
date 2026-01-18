@@ -332,8 +332,8 @@ Common environment variables handling with validation
 {{- $component := index . 0 -}}
 {{- $mode := index . 1 -}}
 {{- if eq $component "postgres" -}}
-{{- if not (or (eq $mode "create") (eq $mode "use_existing") (eq $mode "gcp_cloudsql")) -}}
-{{- fail (printf "Invalid mode '%s' for component '%s'. Allowed values are 'create', 'use_existing', or 'gcp_cloudsql'" $mode $component) -}}
+{{- if not (or (eq $mode "create") (eq $mode "use_existing") (eq $mode "aws_aurora") (eq $mode "gcp_cloudsql")) -}}
+{{- fail (printf "Invalid mode '%s' for component '%s'. Allowed values are 'create', 'use_existing', 'aws_aurora', or 'gcp_cloudsql'" $mode $component) -}}
 {{- end -}}
 {{- else -}}
 # For other components, only allow 2 modes

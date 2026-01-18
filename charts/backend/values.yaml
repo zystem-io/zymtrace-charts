@@ -40,8 +40,37 @@ aiAssistant:
   # Use this for self-hosted or third-party LLM providers with OpenAI-compatible APIs
   customLLM:
     url: ""      # Your custom LLM endpoint URL. e.g https://example.com/v1/chat/completions
-    apiKey: ""   # Your custom LLM API key 
+    apiKey: ""   # Your custom LLM API key
     models: ""   # Comma-separated list of available models, e.g openai/gpt-oss-20b,nvidia/DeepSeek-V3-0324-NVFP4
+
+  # Maximum request size for AI assistant queries (in bytes)
+  # Default: 20971520 (20 MiB)
+  requestSizeLimit: 20971520
+
+  # Default AI provider to use when multiple are configured
+  # Options: anthropic, gemini, openai, custom
+  # Default: anthropic
+  defaultProvider: ""
+
+  # Default model for the selected provider (prefix match)
+  # Examples: claude-sonnet-4-5, gemini-2.0-flash, gpt-5-1
+  # Default: claude-sonnet
+  defaultModel: ""
+
+  # Session cleanup frequency (in seconds)
+  # How often to remove unused assistant sessions
+  # Default: 3600 (1 hour)
+  sessionClearFreq: 3600
+
+  # MCP Server Configuration
+  # Configure MCP servers for assistant integration
+  # Leave away authToken if no auth is required
+  # mcpServers:
+  #  - name: my-mcp
+      # Endpoint will be set via environment variable in configmap
+      # This is a placeholder that gets overridden by the deployment
+  #    endpoint: "http://localhost:1234/mcp"
+  #    authToken: ""
 
 # Authentication Configuration
 auth:
@@ -255,7 +284,7 @@ clickhouse:
     # NOTE: For autoCreateDBs to work, the database user must have CREATE DATABASE permission
 
 postgres:
-  mode: "create"  # "create", "use_existing", or "gcp_cloudsql"
+  mode: "create"  # "create", "use_existing", "aws_aurora", or "gcp_cloudsql"
   nodeSelector: {}
   tolerations: []
   # - key: "key"
@@ -300,13 +329,21 @@ postgres:
     host: "" # host:port
     user: ""
     password: ""
-    useIAM: null # If set, ignore `password` and authenticate via IAM. Valid values: null, "aws"
-    awsRegion: null # Override the default region when using IAM.
     database: "zymtrace"  # This used as the DB prefix, so the actual databases will be `zymtrace_identity` and `zymtrace_symdb`.
     secure: false  # Enable TLS/secure connection
     autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
-    # NOTE: For autoCreateDBs to work, the database user must have CREATEDB permission. 
+    # NOTE: For autoCreateDBs to work, the database user must have CREATEDB permission.
     # Grant with: ALTER USER "your-user" CREATEDB;
+  aws_aurora:
+    host: "" # Aurora cluster endpoint (e.g., cluster-name.cluster-xxxxx.region.rds.amazonaws.com)
+    user: "" # Database user for IAM authentication (must have rds_iam role granted)
+    database: "zymtrace"  # This used as the DB prefix, so the actual databases will be `zymtrace_identity` and `zymtrace_symdb`.
+    region: "" # AWS region (e.g., us-west-2, eu-west-1)
+    autoCreateDBs: false
+    # NOTE: For autoCreateDBs to work, the database user must have CREATEDB permission.
+    # Grant with: ALTER USER "your-user" CREATEDB;
+    serviceAccount: "" # Kubernetes service account with IAM role for Aurora access (created externally with eks.amazonaws.com/role-arn annotation)
+    # Leave blank if IAM role is assigned directly to worker nodes (pods will inherit the node's IAM role via IMDS)
   gcp_cloudsql:
     instance: "" # PROJECT:REGION:INSTANCE zymtrace-cloudsql-psql-1
     user: "" # IAM account, e.g zt-db-762@local-bebop-448118-g4.iam. Ensure that gserviceaccount.com isn't added 

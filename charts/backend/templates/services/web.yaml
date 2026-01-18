@@ -24,6 +24,9 @@ spec:
       {{- include "zymtrace.tolerations" (list $ "web") | nindent 6 }}
       {{- include "zymtrace.affinity" (list $ "web") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      {{- if eq .Values.postgres.mode "aws_aurora" }}
+      serviceAccountName: {{ .Values.postgres.aws_aurora.serviceAccount }}
+      {{- end }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "web") }}
           image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "web") }}:{{ include "zymtrace.serviceTag" (list . "web") }}"

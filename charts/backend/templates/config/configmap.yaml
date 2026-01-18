@@ -36,7 +36,9 @@ data:
 
   {{- if eq .Values.postgres.mode "create" }}
   POSTGRES_USER: {{ .Values.postgres.create.config.user | quote }}
-  {{- else }}
+  {{- else if eq .Values.postgres.mode "aws_aurora" }}
+  POSTGRES_USER: {{ .Values.postgres.aws_aurora.user | quote }}
+  {{- else if eq .Values.postgres.mode "use_existing" }}
   POSTGRES_USER: {{ .Values.postgres.use_existing.user | quote }}
   {{- end }}
 
@@ -101,6 +103,25 @@ data:
 
   WEB__POSTGRES__USERNAME: {{ .Values.postgres.create.config.user | quote }}
   WEB__POSTGRES__ADDR: "{{ include "zymtrace.resourceName" (list $ "postgres") }}:{{ .Values.postgres.create.service.port }}"
+
+  {{- else if eq .Values.postgres.mode "aws_aurora" }}
+  IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.aws_aurora.user | quote }}
+  IDENTITY__POSTGRES__ADDR: {{ .Values.postgres.aws_aurora.host | quote }}
+  IDENTITY__POSTGRES__SECURE: "true"
+  IDENTITY__POSTGRES__DATABASE: {{ .Values.postgres.aws_aurora.database }}_identity
+  IDENTITY__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.aws_aurora.autoCreateDBs | default false | quote }}
+
+  SYMDB__POSTGRES__USERNAME: {{ .Values.postgres.aws_aurora.user | quote }}
+  SYMDB__POSTGRES__ADDR: {{ .Values.postgres.aws_aurora.host | quote }}
+  SYMDB__POSTGRES__SECURE: "true"
+  SYMDB__POSTGRES__DATABASE: {{ .Values.postgres.aws_aurora.database }}_symdb
+  SYMDB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.aws_aurora.autoCreateDBs | default false | quote }}
+
+  WEB__POSTGRES__USERNAME: {{ .Values.postgres.aws_aurora.user | quote }}
+  WEB__POSTGRES__ADDR: {{ .Values.postgres.aws_aurora.host | quote }}
+  WEB__POSTGRES__SECURE: "true"
+  WEB__POSTGRES__DATABASE: {{ .Values.postgres.aws_aurora.database }}_web
+  WEB__POSTGRES__AUTO_CREATE_DBS: {{ .Values.postgres.aws_aurora.autoCreateDBs | default false | quote }}
 
   {{- else if eq .Values.postgres.mode "gcp_cloudsql" }}
   IDENTITY__POSTGRES__USERNAME: {{ .Values.postgres.gcp_cloudsql.user | quote }}
@@ -205,6 +226,17 @@ data:
   {{- if .Values.global.licenseKey }}
   WEB__LICENSE__KEY: {{ .Values.global.licenseKey | quote }}
   INGEST__LICENSE__KEY: {{ .Values.global.licenseKey | quote }}
+  {{- end }}
+
+  # AI Assistant Configuration
+  {{- if .Values.aiAssistant.enabled }}
+  WEB__ASSISTANT__REQUEST_SIZE_LIMIT: {{ .Values.aiAssistant.requestSizeLimit | default 20971520 | int | quote }}
+  WEB__ASSISTANT__DEFAULT_PROVIDER: {{ .Values.aiAssistant.defaultProvider | default "anthropic" | quote }}
+  WEB__ASSISTANT__DEFAULT_MODEL: {{ .Values.aiAssistant.defaultModel | default "claude-sonnet-4-5" | quote }}
+  WEB__SESSION_CLEAR_FREQ: {{ .Values.aiAssistant.sessionClearFreq | default 3600 | int | quote }}
+  {{- if .Values.aiAssistant.mcpServers }}
+  WEB__ASSISTANT__MCP_SERVERS: {{ .Values.aiAssistant.mcpServers | toJson | quote }}
+  {{- end }}
   {{- end }}
 
   # Common environment variables

@@ -24,6 +24,9 @@ spec:
       {{- include "zymtrace.tolerations" (list $ "symdb") | nindent 6 }}
       {{- include "zymtrace.affinity" (list $ "symdb") | nindent 6 }}
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      {{- if eq .Values.postgres.mode "aws_aurora" }}
+      serviceAccountName: {{ .Values.postgres.aws_aurora.serviceAccount }}
+      {{- end }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "symdb") }}
           image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "symdb") }}:{{ include "zymtrace.serviceTag" (list $ "symdb") }}"
