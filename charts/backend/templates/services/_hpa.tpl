@@ -48,7 +48,7 @@ spec:
           type: Utilization
           averageUtilization: {{ $cpuTarget }}
     {{- end }}
-    
+
     {{- $memTarget := "" -}}
     {{- if hasKey $serviceValues "hpa" -}}
       {{- if hasKey $serviceValues.hpa "targetMemoryUtilizationPercentage" -}}
@@ -67,7 +67,7 @@ spec:
           type: Utilization
           averageUtilization: {{ $memTarget }}
     {{- end }}
-  
+
   {{- $behavior := "" -}}
   {{- if hasKey $serviceValues "hpa" -}}
     {{- if hasKey $serviceValues.hpa "behavior" -}}
@@ -83,4 +83,21 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
+
+---
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $root $serviceName) }}-pdb
+spec:
+  {{- if $hpaEnabled }}
+  maxUnavailable: 30%
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $root $serviceName) }}
+
 {{- end }}
