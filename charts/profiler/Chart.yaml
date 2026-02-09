@@ -2,8 +2,8 @@ apiVersion: v2
 name: profiler
 description: Deploy zymtrace's profiler agent
 type: application
-version: 26.2.2
-appVersion: "26.2.2"
+version: 26.2.3
+appVersion: "26.2.3"
 icon: https://helm.zystem.io/zymtrace-logo-255x255.png
 keywords:
   - zymtrace
