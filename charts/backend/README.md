@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.2.3](https://img.shields.io/badge/Chart-26.2.3) ![AppChart: 26.2.3](https://img.shields.io/badge/AppChart-26.2.3)
+![Chart: 26.2.4](https://img.shields.io/badge/Chart-26.2.4) ![AppChart: 26.2.4](https://img.shields.io/badge/AppChart-26.2.4)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
