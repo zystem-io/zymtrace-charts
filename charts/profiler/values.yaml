@@ -89,6 +89,11 @@ profiler:
       # POD_NAME: metadata.name
       # POD_NAMESPACE: metadata.namespace
 
+  # Uncomment to ensure profiler pods are scheduled even on busy nodes.
+  # This allows the DaemonSet to preempt lower-priority pods when resources are scarce.
+  # priorityClassName: "system-node-critical"  # Highest: preempts all non-critical pods
+  priorityClassName: "system-cluster-critical" # High: preempts regular pods but not node-critical ones
+
   resources:
     requests:
       cpu: "200m"

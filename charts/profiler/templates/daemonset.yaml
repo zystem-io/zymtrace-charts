@@ -20,6 +20,9 @@ spec:
       {{- end }}
       hostPID: true
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      {{- if .Values.profiler.priorityClassName }}
+      priorityClassName: {{ .Values.profiler.priorityClassName }}
+      {{- end }}
       containers:
         - name: profiler
           image: {{ include "zymtrace.imageRegistry" . }}/{{ .Values.profiler.image.repository }}:{{ include "zymtrace.profilerTag" . }}
