@@ -43,7 +43,41 @@
        $ helm upgrade {{ .Release.Name }} . -n {{ .Release.Namespace }}
 
     ❗ Common Issues:
+{{ if or
+    (and (eq .Values.clickhouse.mode "create") (eq .Values.clickhouse.create.storage.type "existing_pvc"))
+    (and (eq .Values.postgres.mode "create")   (eq .Values.postgres.create.storage.type   "existing_pvc"))
+    (and (eq .Values.storage.mode "create")    (eq .Values.storage.create.storage.type    "existing_pvc"))
+}}
+    ⚠️  STORAGE NOTICE — existing_pvc mode detected
+    -----------------------------------------------
+    One or more components are configured with storage.type: "existing_pvc".
 
+    IMPORTANT:
+    - The chart will NOT create or delete PVCs in this mode; lifecycle is your
+      responsibility.
+    - If you are upgrading from "persistent" mode, the old auto-provisioned PVC
+      (e.g. zymtrace-clickhouse) is still bound to the PV. You must migrate data
+      and release the old PVC manually — Helm will NOT do this automatically.
+    - Recommended upgrade flag: --reset-then-reuse-values (Helm >= 3.14)
+      This reuses only values you explicitly passed before, so new chart defaults
+      are picked up automatically — reducing the risk of stale storage.type values.
+      Always combine it with explicit storage flags:
+        helm upgrade {{ .Release.Name }} . -n {{ .Release.Namespace }} \
+          --reset-then-reuse-values \
+          --set clickhouse.create.storage.type=existing_pvc \
+          --set clickhouse.create.storage.existing_pvc.pvcName=<your-pvc>
+
+    - If you are on Helm < 3.14 and must use --reuse-values, storage.type is
+      preserved verbatim from the previous release. Pass the storage flags
+      explicitly to avoid the chart ignoring your pvcName:
+        helm upgrade {{ .Release.Name }} . -n {{ .Release.Namespace }} \
+          --reuse-values \
+          --set clickhouse.create.storage.type=existing_pvc \
+          --set clickhouse.create.storage.existing_pvc.pvcName=<your-pvc>
+
+    Verify PVC binding:
+       $ kubectl get pvc -n {{ .Release.Namespace }}
+{{ end }}
     1. If pods are in ImagePullBackOff:
        $ kubectl get pods -n {{ .Release.Namespace }}
        $ kubectl describe pod <pod-name> -n {{ .Release.Namespace }}

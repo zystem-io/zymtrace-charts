@@ -292,20 +292,36 @@ Storage configuration helper
 {{- define "zymtrace.storage" -}}
 {{- $root := index . 0 -}}
 {{- $component := index . 1 -}}
+{{- /* "minio" is a sub-key of "storage" in values, so map the component name to the correct config key. */}}
 {{- $configKey := ternary "storage" $component (eq $component "minio") -}}
 {{- $config := index $root.Values $configKey -}}
 {{- if eq $config.mode "create" -}}
 {{- with $config.create.storage -}}
+{{- /*
+  catch a common upgrade trap: a user sets existing_pvc.pvcName but forgets
+  to also change storage.type to "existing_pvc". With --reuse-values the type stays
+  "persistent" and the pvcName is silently ignored, leaving the pod bound to the
+  old auto-provisioned PVC. Fail loudly here instead.
+*/}}
+{{- if and (ne .type "existing_pvc") (ne .existing_pvc.pvcName "") }}
+{{- fail (printf "storage.existing_pvc.pvcName is set to %q but storage.type is %q — you must also set storage.type: \"existing_pvc\" for the PVC name to take effect. With --reuse-values the old type is preserved; pass --set <component>.create.storage.type=existing_pvc explicitly." .existing_pvc.pvcName .type) }}
+{{- end }}
 {{- if eq .type "persistent" }}
+{{- /* A new PVC named after the component is created by pvcs.yaml when type is "persistent". */}}
 persistentVolumeClaim:
   claimName: {{ include "zymtrace.resourceName" (list $root $component) }}
 {{- else if eq .type "empty_dir" }}
+{{- /* Ephemeral storage — data is lost when the pod is deleted or rescheduled. */}}
 emptyDir: {}
 {{- else if eq .type "existing_pvc" }}
+{{- /* Use a pre-existing PVC. pvcName must be non-empty or Kubernetes will reject the pod spec. */}}
+{{- if not .existing_pvc.pvcName }}
+{{- fail (printf "storage.type is \"existing_pvc\" but storage.existing_pvc.pvcName is empty — provide the name of the PVC to attach.") }}
+{{- end }}
 persistentVolumeClaim:
   claimName: {{ .existing_pvc.pvcName }}
 {{- else }}
-{{- fail "unsupported storage type" }}
+{{- fail (printf "unsupported storage.type %q — valid values are \"persistent\", \"empty_dir\", or \"existing_pvc\"" .type) }}
 {{- end }}
 {{- end }}
 {{- end }}

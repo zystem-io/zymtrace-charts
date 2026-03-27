@@ -14,7 +14,7 @@
 {{- end -}}
 
 {{- if and $hpaEnabled (hasKey $serviceValues "replicas") -}}
-{{- include "zymtrace.metricsServerAvailable" $root -}}
+{{- include "zymtrace.metricsServerAvailable" $root }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

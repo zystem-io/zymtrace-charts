@@ -26,6 +26,8 @@ spec:
       {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
       {{- if eq .Values.postgres.mode "aws_aurora" }}
       serviceAccountName: {{ .Values.postgres.aws_aurora.serviceAccount }}
+      {{- else if and (eq .Values.storage.use_existing.type "s3") .Values.storage.use_existing.s3.serviceAccount }}
+      serviceAccountName: {{ .Values.storage.use_existing.s3.serviceAccount }}
       {{- end }}
       containers:
         - name: {{ include "zymtrace.resourceName" (list $ "identity") }}

@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.3.1](https://img.shields.io/badge/Chart-26.3.1-blue) ![App: 26.3.1](https://img.shields.io/badge/App-26.3.1-yellow)
+![Chart: 26.3.2](https://img.shields.io/badge/Chart-26.3.2-blue) ![App: 26.3.2](https://img.shields.io/badge/App-26.3.2-yellow)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -26,6 +26,14 @@ For detailed configuration and usage instructions, see:
 - PV provisioner support in the underlying infrastructure (for persistent storage)
 - For Google Cloud SQL with IAM: GKE cluster with Workload Identity configured
 - For NetworkPolicies: A CNI that supports NetworkPolicy enforcement (Calico, Cilium, Weave Net, etc.)
+#### ⚠️ WARNING: Avoid Data Loss on Upgrades
+
+> **When upgrading image tags, changing license keys, or any partial `helm upgrade` (without `-f`), you MUST include `--reset-then-reuse-values` (or `--reuse-values`) to preserve existing chart values.**
+>
+> Omitting these flags will reset all values to chart defaults, which can result in **data loss or misconfigured deployments**.
+>
+> - Use `--reset-then-reuse-values` when upgrading with `--set` (e.g. image tags, license keys)
+> - Use `-f <values-file>` when doing a full deployment — no reuse flag needed in that case
 
 ## Installation
 
@@ -74,6 +82,38 @@ helm install backend zymtrace/backend \
   --set postgres.use_existing.host="postgres.example.com:5432" \
   --set postgres.use_existing.user="your-user" \
   --set postgres.use_existing.password="your-password"
+```
+
+## Upgrading
+
+### Upgrade image tag only
+
+```bash
+helm upgrade backend zymtrace/backend \
+  --namespace zymtrace \
+  --reset-then-reuse-values \
+  --set services.common.imageTag="NEW_VERSION" \
+  --debug
+```
+
+### Upgrade license key only
+
+```bash
+helm upgrade backend zymtrace/backend \
+  --namespace zymtrace \
+  --reset-then-reuse-values \
+  --set global.licenseKey="NEW_LICENSE_KEY" \
+  --debug
+```
+
+### Upgrade with a values file (full config)
+
+```bash
+helm upgrade --install backend zymtrace/backend \
+  --namespace zymtrace \
+  --create-namespace \
+  -f backend-values.yaml \
+  --debug
 ```
 
 ## Key Features

@@ -1,6 +1,6 @@
 # Zymtrace Profiler Chart
 
-![Chart: 26.3.1](https://img.shields.io/badge/Chart-26.3.1-blue) ![App: 26.3.1](https://img.shields.io/badge/App-26.3.1-yellow)
+![Chart: 26.3.2](https://img.shields.io/badge/Chart-26.3.2-blue) ![App: 26.3.2](https://img.shields.io/badge/App-26.3.2-yellow)
 
 Deploy zymtrace's profiler agent - a lightweight, low-overhead continuous profiler for CPU and GPU workloads.
 
@@ -22,6 +22,15 @@ For detailed configuration and usage instructions, see:
 
 - Kubernetes 1.19+
 - Helm 3.0+
+
+#### ⚠️ WARNING: Avoid Data Loss on Upgrades
+
+> **When upgrading image tags or any partial `helm upgrade` (without `-f`), you MUST include `--reset-then-reuse-values` (or `--reuse-values`) to preserve existing chart values.**
+>
+> Omitting these flags will reset all values to chart defaults, which can result in **misconfigured deployments**.
+>
+> - Use `--reset-then-reuse-values` when upgrading with `--set` (e.g. image tags)
+> - Use `-f <values-file>` when doing a full deployment — no reuse flag needed in that case
 
 ## Installation
 
@@ -73,6 +82,28 @@ helm install profiler zymtrace/profiler \
 ```
 
 > **Note:** For CPU-only profiling, simply omit `profiler.cudaProfiler.enabled`, `--enable-gpu-metrics`, and `--nvml-auto-scan` options.
+
+## Upgrading
+
+### Upgrade image tag only
+
+```bash
+helm upgrade profiler zymtrace/profiler \
+  --namespace zymtrace \
+  --reset-then-reuse-values \
+  --set profiler.image.tag="NEW_VERSION" \
+  --debug
+```
+
+### Upgrade with a values file (full config)
+
+```bash
+helm upgrade --install profiler zymtrace/profiler \
+  --namespace zymtrace \
+  --create-namespace \
+  -f profiler-values.yaml \
+  --debug
+```
 
 ## Configuration Examples (values file)
 

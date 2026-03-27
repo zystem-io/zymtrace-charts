@@ -441,8 +441,11 @@ storage:
     s3:
       region: ""
       accessKey: ""
-      secretKey: "" 
+      secretKey: ""
       useIAM: null # If set, ignore `accessKey` + `secretKey` and authenticate via IAM. Valid values: null, "aws"
+      serviceAccount: "" # Only applies if using IAM. SA annotated with eks.amazonaws.com/role-arn for IRSA.    
+      # Leave blank if IAM role is assigned directly to worker nodes (pods will inherit the node's IAM role via IMDS). Ref -https://docs.zymtrace.com/databases/object-storage
+
     gcs:
       endpoint: "https://storage.googleapis.com" # GCS endpoint, defaults to https://storage.googleapis.com
       accessKey: ""
