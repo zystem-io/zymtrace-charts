@@ -111,7 +111,7 @@ Environment variables helper template
 
 {{/*
 Command line arguments helper template
-Handles dynamic cluster_id tag injection when running as a subchart
+Handles dynamic cluster_id tag injection and cluster-name when running as a subchart
 */}}
 {{- define "zymtrace.profiler.args" -}}
 {{- $clusterTag := "" -}}
@@ -138,5 +138,18 @@ Handles dynamic cluster_id tag injection when running as a subchart
 {{- end }}
 {{- if and $clusterTag (not $tagsHandled) }}
 - {{ printf "-tags=%s" $clusterTag | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Cluster name environment variable
+Injects ZYMTRACE_CLUSTER_NAME from global.ClusterMetadata.cluster_id
+Uses env var instead of -cluster-name flag for backward compatibility with older profiler versions
+*/}}
+{{- define "zymtrace.profiler.clusterEnv" -}}
+{{- $metadata := .Values.global.ClusterMetadata -}}
+{{- if and $metadata (hasKey $metadata "cluster_id") $metadata.cluster_id }}
+- name: ZYMTRACE_CLUSTER_NAME
+  value: {{ $metadata.cluster_id | quote }}
 {{- end }}
 {{- end -}}
