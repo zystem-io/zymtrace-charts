@@ -231,12 +231,15 @@ data:
   # AI Assistant Configuration
   {{- if .Values.aiAssistant.enabled }}
   WEB__ASSISTANT__REQUEST_SIZE_LIMIT: {{ .Values.aiAssistant.requestSizeLimit | default 20971520 | int | quote }}
-  WEB__ASSISTANT__DEFAULT_PROVIDER: {{ .Values.aiAssistant.defaultProvider | default "anthropic" | quote }}
-  WEB__ASSISTANT__DEFAULT_MODEL: {{ .Values.aiAssistant.defaultModel | default "claude-sonnet-4-5" | quote }}
   WEB__SESSION_CLEAR_FREQ: {{ .Values.aiAssistant.sessionClearFreq | default 3600 | int | quote }}
   {{- if .Values.aiAssistant.mcpServers }}
   WEB__ASSISTANT__MCP_SERVERS: {{ .Values.aiAssistant.mcpServers | toJson | quote }}
   {{- end }}
+  {{- end }}
+  
+  # Telemetry
+  {{- if .Values.telemetry.disableAll }}
+  WEB__DISABLE_ALL_TELEMETRY: "true"
   {{- end }}
 
   # Common environment variables

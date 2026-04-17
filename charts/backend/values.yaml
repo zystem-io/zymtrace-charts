@@ -938,3 +938,7 @@ ingress:
   #   hosts:
   #     - zymtrace.company.com
   tls: []
+
+telemetry:
+  # Set to true to disable telemetry reporting for all services and UI.
+  disableAll: false

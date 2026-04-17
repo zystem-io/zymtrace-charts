@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.4.0](https://img.shields.io/badge/Chart-26.4.0-blue) ![App: 26.4.0](https://img.shields.io/badge/App-26.4.0-yellow)
+![Chart: 26.4.1](https://img.shields.io/badge/Chart-26.4.1-blue) ![App: 26.4.1](https://img.shields.io/badge/App-26.4.1-yellow)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -225,8 +225,6 @@ aiAssistant:
     models: "model-1,model-2"
 
   # Optional: Advanced configuration
-  defaultProvider: "anthropic"  # Which provider to use by default
-  defaultModel: "claude-sonnet"
   requestSizeLimit: 20971520  # 20 MiB
   sessionClearFreq: 3600  # 1 hour
 ```
@@ -319,8 +317,6 @@ services:
 | aiAssistant.customLLM.apiKey | string | Custom LLM API key | - |
 | aiAssistant.customLLM.models | string | Comma-separated list of available custom models | - |
 | aiAssistant.requestSizeLimit | int | Maximum request size for AI queries (bytes) | `20971520` (20 MiB) |
-| aiAssistant.defaultProvider | string | Default AI provider (`anthropic`, `gemini`, `openai`, `custom`) | `anthropic` |
-| aiAssistant.defaultModel | string | Default model for the provider | `claude-sonnet` |
 | aiAssistant.sessionClearFreq | int | Session cleanup frequency (seconds) | `3600` (1 hour) |
 | aiAssistant.mcpServers | list | MCP server configurations | See values.yaml |
 
