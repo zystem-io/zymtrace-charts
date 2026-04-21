@@ -95,6 +95,13 @@ metadata:
   labels:
     {{- include "zymtrace.labels" . | nindent 4 }}
     app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+    {{- with .Values.services.gateway.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.services.gateway.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ default "ClusterIP" .Values.services.gateway.service.type }}
   ports:

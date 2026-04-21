@@ -534,6 +534,11 @@ services:
     portTrusted: 8376
     portHealth: 8377
     replicas: 1
+    service:
+      annotations: {}
+      #   app: zymtrace
+      labels: {}
+      #   team: zymtrace
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -572,6 +577,9 @@ services:
       tag: ""
     port: 9933
     replicas: 1
+    service:
+      annotations: {}
+      labels: {}
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -611,6 +619,9 @@ services:
     portTrusted: 6108
     portHealth: 6109
     replicas: 1
+    service:
+      annotations: {}
+      labels: {}
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -651,6 +662,9 @@ services:
       tag: ""
     port: 80
     replicas: 1
+    service:
+      annotations: {}
+      labels: {}
     # Use common HPA settings unless you need service-specific values
     # Individual HPA settings take precedence over common settings when uncommented
     #hpa:
@@ -690,6 +704,9 @@ services:
     port: 7829
     portHealth: 7831
     replicas: 1
+    service:
+      annotations: {}
+      labels: {}
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -765,6 +782,8 @@ services:
       type: ClusterIP
       # Used for NodePort service type
       nodePort: ""
+      annotations: {}
+      labels: {}
     port: 80
     portTrusted: 9900
     adminPort: 9901
