@@ -222,11 +222,6 @@ data:
   INGEST_SERVICE: "grpc://{{ include "zymtrace.resourceName" (list $ "ingest") }}:{{ .Values.services.ingest.port }}"
   SYMDB_SERVICE: "grpc://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.port }}"
 
-  # License key configuration
-  {{- if .Values.global.licenseKey }}
-  WEB__LICENSE__KEY: {{ .Values.global.licenseKey | quote }}
-  INGEST__LICENSE__KEY: {{ .Values.global.licenseKey | quote }}
-  {{- end }}
 
   # AI Assistant Configuration
   {{- if .Values.aiAssistant.enabled }}

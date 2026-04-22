@@ -42,13 +42,6 @@ spec:
             - name: mtls
               containerPort: {{ .Values.services.gateway.mtls.port }}
               protocol: TCP
-          env:
-            {{- if eq (include "zymtrace.authType" .) "basic" }}
-            - name: UI_USER
-              value: {{ .Values.auth.basic.username | quote }}
-            - name: UI_PASSWORD
-              value: {{ .Values.auth.basic.password | quote }}
-            {{- end }}
           {{- include "zymtrace.gatewayServiceEnvConfig" (list $ "gateway") | nindent 10 }}
           resources:
             {{- toYaml .Values.services.gateway.resources | nindent 12 }}

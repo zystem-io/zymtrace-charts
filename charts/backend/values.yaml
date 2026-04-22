@@ -1,6 +1,13 @@
 # Global Configuration
 global:
-  licenseKey: "" # Your zymtrace license key goes here 
+  licenseKey: "" # Your zymtrace license key goes here
+  # Reference an existing Kubernetes Secret instead of passing the license key in plaintext.
+  # When set, licenseKey above is ignored.
+  # Example:
+  #   licenseKeySecretName: "zymtrace-license"
+  #   licenseKeySecretKey: "license-key"   # the key inside that secret that holds the value
+  licenseKeySecretName: ""
+  licenseKeySecretKey: "license-key"  # key name inside the secret — change if your secret uses a different name
   namePrefix: "zymtrace"
   imageRegistry: "docker.io" # Default registry
   appImageRegistry: "ghcr.io/zystem-io"  # Specific registry for zymtrace backend services images, e.g docker.io/zystemio
@@ -125,6 +132,10 @@ auth:
     # You should generate your own keys for your deployment, i.e.:
     # openssl genpkey -algorithm ED25519 -out /tmp/private.pem
     # openssl pkey -in /tmp/private.pem -pubout -out /tmp/public.pem
+    # kubectl -n zymtrace create secret generic sample-private-key \
+    #  --from-file=private-key=/tmp/private.pem
+    # kubectl -n zymtrace create secret generic sample-public-key \
+    #  --from-file=public-key=/tmp/public.pem
     keys:
       privateKey:
         # Private Key (PEM format) - Required for self-hosted auth
@@ -134,6 +145,13 @@ auth:
         # MIIBrDCCAVKgAwIBAgIUb7Y7r6OKgiFlnu6Zk0KN9qI6eZcwCgYIKoZIzj0EAwIw
         # ...certificate content...
         # -----END CERTIFICATE-----
+      # Reference an existing Kubernetes Secret instead of passing the private key in plaintext.
+      # When set, privateKey above is ignored.
+      # Example:
+      #   privateKeySecretName: "zymtrace-signing-keys"
+      #   privateKeySecretKey: "private-key"  # the key inside that secret that holds the PEM value
+      privateKeySecretName: ""
+      privateKeySecretKey: "private-key"  # key name inside the secret — change if your secret uses a different name
       publicKey:
         # Public Key (PEM format) - Required for self-hosted auth and token validation
         # Leave empty when using external OIDC providers (Google, Okta, etc.)
@@ -142,6 +160,13 @@ auth:
         # MIIBrDCCAVKgAwIBAgIUb7Y7r6OKgiFlnu6Zk0KN9qI6eZcwCgYIKoZIzj0EAwIw
         # ...certificate content...
         # -----END CERTIFICATE-----
+      # Reference an existing Kubernetes Secret instead of passing the public key in plaintext.
+      # When set, publicKey above is ignored. Can point to the same secret as privateKeySecretName.
+      # Example:
+      #   publicKeySecretName: "zymtrace-signing-keys"
+      #   publicKeySecretKey: "public-key"   # the key inside that secret that holds the PEM value
+      publicKeySecretName: ""
+      publicKeySecretKey: "public-key"  # key name inside the secret — change if your secret uses a different name
 
   # OIDC (OpenID Connect) Authentication Configuration
   # Active when auth.type is "oidc"

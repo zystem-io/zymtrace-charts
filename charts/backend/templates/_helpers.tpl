@@ -97,6 +97,48 @@ envFrom:
 {{- end }}
 
 {{/*
+Emit env list items for values sourced from external existing Secrets.
+Emits only the list items (no "env:" key) so callers can embed them
+inside their own env: block with correct indentation via "indent 2".
+Used when licenseKeySecretName or privateKey/publicKeySecretName are set.
+*/}}
+{{- define "zymtrace.externalSecretEnvItems" -}}
+{{- $root := . -}}
+{{- $keys := $root.Values.auth.validation.keys -}}
+{{- if $root.Values.global.licenseKeySecretName }}
+- name: WEB__LICENSE__KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $root.Values.global.licenseKeySecretName }}
+      key: {{ default "license-key" $root.Values.global.licenseKeySecretKey }}
+- name: INGEST__LICENSE__KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $root.Values.global.licenseKeySecretName }}
+      key: {{ default "license-key" $root.Values.global.licenseKeySecretKey }}
+{{- end }}
+{{- if $keys.privateKeySecretName }}
+- name: IDENTITY__AUTH__TOKEN__PRIVATE_KEY__CONTENT
+  valueFrom:
+    secretKeyRef:
+      name: {{ $keys.privateKeySecretName }}
+      key: {{ default "private-key" $keys.privateKeySecretKey }}
+{{- end }}
+{{- if $keys.publicKeySecretName }}
+- name: IDENTITY__AUTH__TOKEN__PUBLIC_KEY__CONTENT
+  valueFrom:
+    secretKeyRef:
+      name: {{ $keys.publicKeySecretName }}
+      key: {{ default "public-key" $keys.publicKeySecretKey }}
+- name: WEB__AUTH__VALIDATION__PUBLIC_KEY__CONTENT
+  valueFrom:
+    secretKeyRef:
+      name: {{ $keys.publicKeySecretName }}
+      key: {{ default "public-key" $keys.publicKeySecretKey }}
+{{- end }}
+{{- end }}
+
+{{/*
 Service environment configuration with individual service environment variables
 */}}
 {{- define "zymtrace.serviceEnvConfig" -}}
@@ -108,6 +150,8 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "auth-config") }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "auth-secrets") }}
 {{- if or (eq $service "ingest") (eq $service "web") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "clickhouse-secrets") }}
@@ -136,11 +180,15 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "global-symbolization-secrets") }}
 {{- end }}
 {{- end }}
-{{- if $serviceConfig.env }}
+{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" $root | trim -}}
+{{- if or $serviceConfig.env $externalEnvItems }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
   - name: {{ $key }}
     value: {{ $value | quote }}
+{{- end }}
+{{- if $externalEnvItems }}
+{{ $externalEnvItems | indent 2 }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -157,11 +205,17 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "gateway-config") }}
   - configMapRef:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
-{{- if $serviceConfig.env }}
+  - secretRef:
+      name: {{ include "zymtrace.resourceName" (list $root "auth-secrets") }}
+{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" $root | trim -}}
+{{- if or $serviceConfig.env $externalEnvItems }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
   - name: {{ $key }}
     value: {{ $value | quote }}
+{{- end }}
+{{- if $externalEnvItems }}
+{{ $externalEnvItems | indent 2 }}
 {{- end }}
 {{- end }}
 {{- end }}

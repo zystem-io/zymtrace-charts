@@ -22,8 +22,8 @@ metadata:
     "helm.sh/hook-weight": "0" 
     "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation"
 spec:
-  ttlSecondsAfterFinished: 180
-  activeDeadlineSeconds: 180  # 3 minutes timeout
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 600  # 10 minutes timeout (allows for cold image pulls)
   backoffLimit: 6
   template:
     metadata:
