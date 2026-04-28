@@ -103,8 +103,23 @@ inside their own env: block with correct indentation via "indent 2".
 Used when licenseKeySecretName or privateKey/publicKeySecretName are set.
 */}}
 {{- define "zymtrace.externalSecretEnvItems" -}}
-{{- $root := . -}}
+{{- $root := index . 0 -}}
+{{- $service := index . 1 -}}
 {{- $keys := $root.Values.auth.validation.keys -}}
+{{- if and $root.Values.auth.admin.passwordSecretName (ne $root.Values.auth.type "none") }}
+- name: IDENTITY__AUTH__ADMIN__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $root.Values.auth.admin.passwordSecretName }}
+      key: {{ default "admin-password" $root.Values.auth.admin.passwordSecretKey }}
+{{- end }}
+{{- if and (eq $root.Values.auth.type "oidc") $root.Values.auth.oidc.provider.clientSecretSecretName }}
+- name: IDENTITY__AUTH__OIDC__CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: {{ $root.Values.auth.oidc.provider.clientSecretSecretName }}
+      key: {{ default "oidc-client-secret" $root.Values.auth.oidc.provider.clientSecretSecretKey }}
+{{- end }}
 {{- if $root.Values.global.licenseKeySecretName }}
 - name: WEB__LICENSE__KEY
   valueFrom:
@@ -135,6 +150,129 @@ Used when licenseKeySecretName or privateKey/publicKeySecretName are set.
     secretKeyRef:
       name: {{ $keys.publicKeySecretName }}
       key: {{ default "public-key" $keys.publicKeySecretKey }}
+{{- end }}
+{{- if and (eq $root.Values.clickhouse.mode "use_existing") $root.Values.clickhouse.use_existing.passwordSecretName }}
+{{- $chSecret := $root.Values.clickhouse.use_existing.passwordSecretName }}
+{{- $chKey := default "password" $root.Values.clickhouse.use_existing.passwordSecretKey }}
+- name: INGEST__CLICKHOUSE__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $chSecret }}
+      key: {{ $chKey }}
+- name: INGEST__METRICS__CLICKHOUSE__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $chSecret }}
+      key: {{ $chKey }}
+- name: WEB__CLICKHOUSE__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $chSecret }}
+      key: {{ $chKey }}
+- name: WEB__METRICS__CLICKHOUSE__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $chSecret }}
+      key: {{ $chKey }}
+{{- end }}
+{{- if and (eq $root.Values.postgres.mode "use_existing") $root.Values.postgres.use_existing.passwordSecretName }}
+{{- $pgSecret := $root.Values.postgres.use_existing.passwordSecretName }}
+{{- $pgKey := default "password" $root.Values.postgres.use_existing.passwordSecretKey }}
+- name: IDENTITY__POSTGRES__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pgSecret }}
+      key: {{ $pgKey }}
+- name: SYMDB__POSTGRES__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pgSecret }}
+      key: {{ $pgKey }}
+- name: WEB__POSTGRES__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pgSecret }}
+      key: {{ $pgKey }}
+{{- end }}
+{{- if eq $root.Values.storage.mode "use_existing" }}
+{{- $st := $root.Values.storage.use_existing }}
+{{- if eq $st.type "minio" }}
+{{- if $st.minio.userSecretName }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.minio.userSecretName }}
+      key: {{ default "user" $st.minio.userSecretKey }}
+{{- end }}
+{{- if $st.minio.passwordSecretName }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.minio.passwordSecretName }}
+      key: {{ default "password" $st.minio.passwordSecretKey }}
+{{- end }}
+{{- else if eq $st.type "s3" }}
+{{- if and $st.s3.accessKeySecretName (not $st.s3.useIAM) }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.s3.accessKeySecretName }}
+      key: {{ default "access-key" $st.s3.accessKeySecretKey }}
+{{- end }}
+{{- if and $st.s3.secretKeySecretName (not $st.s3.useIAM) }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.s3.secretKeySecretName }}
+      key: {{ default "secret-key" $st.s3.secretKeySecretKey }}
+{{- end }}
+{{- else if eq $st.type "gcs" }}
+{{- if $st.gcs.accessKeySecretName }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.gcs.accessKeySecretName }}
+      key: {{ default "access-key" $st.gcs.accessKeySecretKey }}
+{{- end }}
+{{- if $st.gcs.secretKeySecretName }}
+- name: SYMDB__SYMBOL_BUCKET__AWS_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $st.gcs.secretKeySecretName }}
+      key: {{ default "secret-key" $st.gcs.secretKeySecretKey }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $root.Values.aiAssistant.enabled (eq $service "web") }}
+{{- $ai := $root.Values.aiAssistant }}
+{{- if $ai.anthropic.apiKeySecretName }}
+- name: WEB__ASSISTANT__API_KEYS__ANTHROPIC
+  valueFrom:
+    secretKeyRef:
+      name: {{ $ai.anthropic.apiKeySecretName }}
+      key: {{ default "anthropic-api-key" $ai.anthropic.apiKeySecretKey }}
+{{- end }}
+{{- if $ai.gemini.apiKeySecretName }}
+- name: WEB__ASSISTANT__API_KEYS__GEMINI
+  valueFrom:
+    secretKeyRef:
+      name: {{ $ai.gemini.apiKeySecretName }}
+      key: {{ default "gemini-api-key" $ai.gemini.apiKeySecretKey }}
+{{- end }}
+{{- if $ai.openai.apiKeySecretName }}
+- name: WEB__ASSISTANT__API_KEYS__OPENAI
+  valueFrom:
+    secretKeyRef:
+      name: {{ $ai.openai.apiKeySecretName }}
+      key: {{ default "openai-api-key" $ai.openai.apiKeySecretKey }}
+{{- end }}
+{{- if $ai.customLLM.apiKeySecretName }}
+- name: WEB__ASSISTANT__CUSTOM_LLM__API_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $ai.customLLM.apiKeySecretName }}
+      key: {{ default "custom-llm-api-key" $ai.customLLM.apiKeySecretKey }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -180,7 +318,7 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "global-symbolization-secrets") }}
 {{- end }}
 {{- end }}
-{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" $root | trim -}}
+{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" (list $root $service) | trim -}}
 {{- if or $serviceConfig.env $externalEnvItems }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
@@ -207,7 +345,7 @@ envFrom:
       name: {{ include "zymtrace.resourceName" (list $root "config") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "auth-secrets") }}
-{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" $root | trim -}}
+{{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" (list $root $service) | trim -}}
 {{- if or $serviceConfig.env $externalEnvItems }}
 env:
 {{- range $key, $value := $serviceConfig.env }}

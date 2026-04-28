@@ -32,22 +32,30 @@ aiAssistant:
   # Get your API key from: https://console.anthropic.com/
   anthropic:
     apiKey: ""  # Your Anthropic API key (sets WEB__ASSISTANT__API_KEYS__ANTHROPIC)
-  
+    apiKeySecretName: ""   # takes precedence over apiKey
+    apiKeySecretKey: "anthropic-api-key"
+
   # Google Gemini Configuration
   # Get your API key from: https://aistudio.google.com/apikey
   gemini:
     apiKey: ""  # Your Google Gemini API key (sets WEB__ASSISTANT__API_KEYS__GEMINI)
-  
+    apiKeySecretName: ""   # takes precedence over apiKey
+    apiKeySecretKey: "gemini-api-key"
+
   # OpenAI Configuration
   # Get your API key from: https://platform.openai.com/api-keys
   openai:
     apiKey: ""  # Your OpenAI API key (sets WEB__ASSISTANT__API_KEYS__OPENAI)
+    apiKeySecretName: ""   # takes precedence over apiKey
+    apiKeySecretKey: "openai-api-key"
 
   # Custom LLM Configuration
   # Use this for self-hosted or third-party LLM providers with OpenAI-compatible APIs
   customLLM:
     url: ""      # Your custom LLM endpoint URL. e.g https://example.com/v1/chat/completions
     apiKey: ""   # Your custom LLM API key
+    apiKeySecretName: ""   # takes precedence over apiKey
+    apiKeySecretKey: "custom-llm-api-key"
     models: ""   # Comma-separated list of available models, e.g openai/gpt-oss-20b,nvidia/DeepSeek-V3-0324-NVFP4
 
   # Maximum request size for AI assistant queries (in bytes)
@@ -106,6 +114,8 @@ auth:
   admin:
     email: admin@zymtrace.com
     password: admin
+    passwordSecretName: ""   # takes precedence over password
+    passwordSecretKey: "admin-password"
     roles:
       - "System Admin"
 
@@ -190,7 +200,9 @@ auth:
       #   Auth0:    issuerUri: https://your-tenant.auth0.com
       #   Azure AD: issuerUri: https://login.microsoftonline.com/{tenant-id}/v2.0
       clientId: ''  # Required: Your OAuth Client ID (e.g., xxxxx.apps.googleusercontent.com for Google)
-      clientSecret: ''  # Required: Your OAuth Client Secret
+      clientSecret: ''  # Required: Your OAuth Client Secret. Ignored when clientSecretSecretName is set.
+      clientSecretSecretName: ""   # takes precedence over clientSecret
+      clientSecretSecretKey: "oidc-client-secret"
       
       # OIDC Issuer URL
       # GOOGLE (default): https://accounts.google.com
@@ -298,7 +310,14 @@ clickhouse:
     host: ""  # Must include protocol and port: http://myhost:8123 or https://myhost:8443
               # NOTE: Only the HTTP interface port is supported due to limitations in the official ClickHouse Rust client. The native protocol port (9000) is not supported.
     user: ""
-    password: ""
+    password: ""  # Ignored when passwordSecretName is set
+    # Reference an existing Kubernetes Secret instead of passing the password in plaintext.
+    # When set, password above is ignored.
+    # Example:
+    #   passwordSecretName: "my-clickhouse-secret"
+    #   passwordSecretKey: "password"
+    passwordSecretName: ""
+    passwordSecretKey: "password"
     database: "zymtrace" # This is used as the DB prefix, so the actual databases will be `zymtrace_profiling` and `zymtrace_metrics `.
     clusterName: "" # Optional: ClickHouse cluster name for distributed setups (e.g., "zymtrace_cluster").
                      # Required when using ClickHouse clusters with multiple shards/replicas.
@@ -353,12 +372,21 @@ postgres:
   use_existing:
     host: "" # host:port
     user: ""
-    password: ""
+    password: ""  # Ignored when passwordSecretName is set
+    # Reference an existing Kubernetes Secret instead of passing the password in plaintext.
+    # When set, password above is ignored.
+    # Example:
+    #   passwordSecretName: "my-postgres-secret"
+    #   passwordSecretKey: "password"
+    passwordSecretName: ""
+    passwordSecretKey: "password"
     database: "zymtrace"  # This used as the DB prefix, so the actual databases will be `zymtrace_identity` and `zymtrace_symdb`.
     secure: false  # Enable TLS/secure connection
     autoCreateDBs: false  # When true, sets IDENTITY__POSTGRES__AUTO_CREATE_DBS=true and SYMDB__POSTGRES__AUTO_CREATE_DBS=true
     # NOTE: For autoCreateDBs to work, the database user must have CREATEDB permission.
     # Grant with: ALTER USER "your-user" CREATEDB;
+    useIAM: ""  # If set to "aws", authenticate via IAM instead of password. Ignores password/passwordSecretName.
+    awsIamRegion: ""  # Required when useIAM is "aws" (e.g. us-west-2)
   aws_aurora:
     host: "" # Aurora cluster endpoint (e.g., cluster-name.cluster-xxxxx.region.rds.amazonaws.com)
     user: "" # Database user for IAM authentication (must have rds_iam role granted)
@@ -462,19 +490,30 @@ storage:
     minio:
       endpoint: "" # must be a url, http/s
       user: ""
+      userSecretName: ""       # takes precedence over user
+      userSecretKey: "user"
       password: ""
+      passwordSecretName: ""   # takes precedence over password
+      passwordSecretKey: "password"
     s3:
       region: ""
       accessKey: ""
+      accessKeySecretName: ""  # takes precedence over accessKey
+      accessKeySecretKey: "access-key"
       secretKey: ""
-      useIAM: null # If set, ignore `accessKey` + `secretKey` and authenticate via IAM. Valid values: null, "aws"
-      serviceAccount: "" # Only applies if using IAM. SA annotated with eks.amazonaws.com/role-arn for IRSA.    
+      secretKeySecretName: ""  # takes precedence over secretKey
+      secretKeySecretKey: "secret-key"
+      useIAM: null # If set, ignore accessKey/secretKey and authenticate via IAM. Valid values: null, "aws"
+      serviceAccount: "" # Only applies if using IAM. SA annotated with eks.amazonaws.com/role-arn for IRSA.
       # Leave blank if IAM role is assigned directly to worker nodes (pods will inherit the node's IAM role via IMDS). Ref -https://docs.zymtrace.com/databases/object-storage
-
     gcs:
       endpoint: "https://storage.googleapis.com" # GCS endpoint, defaults to https://storage.googleapis.com
       accessKey: ""
+      accessKeySecretName: ""  # takes precedence over accessKey
+      accessKeySecretKey: "access-key"
       secretKey: ""
+      secretKeySecretName: ""  # takes precedence over secretKey
+      secretKeySecretKey: "secret-key"
   buckets:
     symbols: "zymtrace-symdb"
 
