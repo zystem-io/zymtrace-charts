@@ -223,6 +223,16 @@ data:
   SYMDB_SERVICE: "grpc://{{ include "zymtrace.resourceName" (list $ "symdb") }}:{{ .Values.services.symdb.port }}"
 
 
+  # Demo Prefill Configuration
+  {{- with .Values.prefillDemo }}
+  {{- if .user }}
+  WEB__DEMO__USER__LOGIN: {{ .user | quote }}
+  {{- end }}
+  {{- if .password }}
+  WEB__DEMO__USER__PASSWORD: {{ .password | quote }}
+  {{- end }}
+  {{- end }}
+
   # AI Assistant Configuration
   {{- if .Values.aiAssistant.enabled }}
   WEB__ASSISTANT__REQUEST_SIZE_LIMIT: {{ .Values.aiAssistant.requestSizeLimit | default 20971520 | int | quote }}
