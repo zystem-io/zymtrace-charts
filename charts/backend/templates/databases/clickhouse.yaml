@@ -1,4 +1,25 @@
 {{- if eq .Values.clickhouse.mode "create" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "clickhouse-config") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+data:
+  system-logs.xml: |
+    <clickhouse>
+        <query_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></query_log>
+        <query_thread_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></query_thread_log>
+        <trace_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></trace_log>
+        <metric_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></metric_log>
+        <asynchronous_metric_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></asynchronous_metric_log>
+        <session_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></session_log>
+        <part_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></part_log>
+        <text_log><ttl>event_time + INTERVAL 23 HOUR DELETE</ttl></text_log>
+    </clickhouse>
+
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -38,6 +59,9 @@ spec:
               {{- if and (eq .Values.clickhouse.create.storage.type "existing_pvc") (.Values.clickhouse.create.storage.existing_pvc.subPath) }}
               subPath: {{ .Values.clickhouse.create.storage.existing_pvc.subPath }}
               {{- end }}
+            - name: config
+              mountPath: /etc/clickhouse-server/config.d/system-logs.xml
+              subPath: system-logs.xml
           livenessProbe:
             exec:
               command:
@@ -60,6 +84,9 @@ spec:
       volumes:
         - name: data
           {{- include "zymtrace.storage" (list $ "clickhouse") | nindent 10 }}
+        - name: config
+          configMap:
+            name: {{ include "zymtrace.resourceName" (list $ "clickhouse-config") }}
 
 ---
 apiVersion: v1
