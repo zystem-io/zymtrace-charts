@@ -670,6 +670,7 @@ services:
       #   operator: "Equal"
       #   value: "web"
       #   effect: "NoSchedule"
+    allowRecommendations: true
     env: {}
       # RUST_LOG: "info"
     affinity: {}

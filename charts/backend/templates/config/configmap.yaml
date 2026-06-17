@@ -217,6 +217,9 @@ data:
   {{- end }}
   {{- end }}
 
+  # Web service configuration
+  WEB__ALLOW_RECOMMENDATIONS: {{ .Values.services.web.allowRecommendations | default true | quote }}
+
   # UI configuration
   WEB_SERVICE: "http://{{ include "zymtrace.resourceName" (list $ "web") }}:{{ .Values.services.web.port }}"
   INGEST_SERVICE: "grpc://{{ include "zymtrace.resourceName" (list $ "ingest") }}:{{ .Values.services.ingest.port }}"
@@ -245,6 +248,7 @@ data:
   # Telemetry
   {{- if .Values.telemetry.disableAll }}
   WEB__DISABLE_ALL_TELEMETRY: "true"
+  INGEST__TELEMETRY__ENABLED: "false"
   {{- end }}
 
   # Common environment variables
