@@ -1026,3 +1026,15 @@ ingress:
 telemetry:
   # Set to true to disable telemetry reporting for all services and UI.
   disableAll: false
+
+# Zymtrace internal metric reporter configuration (self-metrics). When enabled, it collects:
+# - how many traces were ingested or dropped
+# - request/response time metrics
+# - LLM token usage (quotas support)
+# - some other metrics like allocator stats across all services
+metricReporter:
+  enabled: true # Set to false to disable metric reporting for all services.
+  pollPeriodSec: 30 # How often metrics are collected.
+  exportPeriodSec: 60 # How often collected metrics are exported to ingest.
+  alignTimestamps: true # Align exported metric timestamps to the poll period.
+  console: false # Set to true to also log metrics to the console (debugging).

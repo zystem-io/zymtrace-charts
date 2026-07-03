@@ -160,6 +160,17 @@ data:
 
   {{- end }}
 
+  # Metric reporter configuration (services report metrics to the ingest trusted endpoint)
+  {{- $ingestTrustedEndpoint := printf "http://%s:%v" (include "zymtrace.resourceName" (list $ "ingest")) .Values.services.ingest.portTrusted }}
+  {{- range $prefix := list "INGEST" "IDENTITY" "WEB" "SYMDB" }}
+  {{ $prefix }}__METRIC_REPORTER__ENABLED: {{ $.Values.metricReporter.enabled | quote }}
+  {{ $prefix }}__METRIC_REPORTER__ENDPOINT: {{ $ingestTrustedEndpoint | quote }}
+  {{ $prefix }}__METRIC_REPORTER__POLL_PERIOD_SEC: {{ $.Values.metricReporter.pollPeriodSec | quote }}
+  {{ $prefix }}__METRIC_REPORTER__EXPORT_PERIOD_SEC: {{ $.Values.metricReporter.exportPeriodSec | quote }}
+  {{ $prefix }}__METRIC_REPORTER__ALIGN_TIMESTAMPS: {{ $.Values.metricReporter.alignTimestamps | quote }}
+  {{ $prefix }}__METRIC_REPORTER__CONSOLE: {{ $.Values.metricReporter.console | quote }}
+  {{- end }}
+
   # Service endpoints
   INGEST__IDENTITY_SERVICE__ENDPOINT: "http://{{ include "zymtrace.resourceName" (list $ "identity") }}:{{ .Values.services.identity.port }}"
 
@@ -244,7 +255,7 @@ data:
   WEB__ASSISTANT__MCP_SERVERS: {{ .Values.aiAssistant.mcpServers | toJson | quote }}
   {{- end }}
   {{- end }}
-  
+
   # Telemetry
   {{- if .Values.telemetry.disableAll }}
   WEB__DISABLE_ALL_TELEMETRY: "true"
