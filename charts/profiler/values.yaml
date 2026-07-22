@@ -99,9 +99,11 @@ profiler:
     requests:
       cpu: "200m"
       memory: "256Mi"
+      ephemeral-storage: "1Gi"
     limits:
       cpu: "1000m"
       memory: "1Gi"
+      ephemeral-storage: "2Gi"
   nodeSelector:
     {}
     # Override with: --set profiler.nodeSelector."kubernetes\.io/arch"=amd64
