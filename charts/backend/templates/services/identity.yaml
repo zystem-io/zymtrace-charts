@@ -17,6 +17,10 @@ spec:
       app: {{ include "zymtrace.resourceName" (list $ "identity") }}
   template:
     metadata:
+      {{- with .Values.services.identity.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "identity") }}
     spec:

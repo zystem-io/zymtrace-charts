@@ -603,6 +603,7 @@ services:
       #   app: zymtrace
       labels: {}
       #   team: zymtrace
+    podAnnotations: {} # Extra annotations for the ingest pods, e.g. prometheus.io scrape hints.
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -644,6 +645,7 @@ services:
     service:
       annotations: {}
       labels: {}
+    podAnnotations: {} # Extra annotations for the web pods, e.g. prometheus.io scrape hints.
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -687,6 +689,7 @@ services:
     service:
       annotations: {}
       labels: {}
+    podAnnotations: {} # Extra annotations for the symdb pods, e.g. prometheus.io scrape hints.
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -772,6 +775,7 @@ services:
     service:
       annotations: {}
       labels: {}
+    podAnnotations: {} # Extra annotations for the identity pods, e.g. prometheus.io scrape hints.
     # Use common HPA settings unless you need service-specific values
     #hpa:
     #  enabled: false
@@ -1027,14 +1031,24 @@ telemetry:
   # Set to true to disable telemetry reporting for all services and UI.
   disableAll: false
 
-# Zymtrace internal metric reporter configuration (self-metrics). When enabled, it collects:
+# Zymtrace internal metric reporter configuration (self-metrics). It collects:
 # - how many traces were ingested or dropped
 # - request/response time metrics
 # - LLM token usage (quotas support)
 # - some other metrics like allocator stats across all services
+# Metrics are pushed to the ingest service and additionally exposed for Prometheus
+# scraping at GET /metrics on each service's health-check port (web: REST port).
 metricReporter:
-  enabled: true # Set to false to disable metric reporting for all services.
   pollPeriodSec: 30 # How often metrics are collected.
   exportPeriodSec: 60 # How often collected metrics are exported to ingest.
   alignTimestamps: true # Align exported metric timestamps to the poll period.
   console: false # Set to true to also log metrics to the console (debugging).
+  # Prometheus-operator PodMonitors for the backend services. Requires the
+  # monitoring.coreos.com/v1 CRDs (e.g. kube-prometheus-stack) in the cluster.
+  podMonitor:
+    enabled: false
+    # Extra labels so the operator's podMonitorSelector picks the monitors up,
+    # e.g. release: kube-prometheus-stack
+    additionalLabels: {}
+    # Override the operator's default scrape interval, e.g. 30s.
+    interval: ""

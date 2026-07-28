@@ -160,10 +160,13 @@ data:
 
   {{- end }}
 
-  # Metric reporter configuration (services report metrics to the ingest trusted endpoint)
+  # Metric reporter configuration (services report metrics to the ingest trusted endpoint).
+  {{- if and (hasKey .Values.metricReporter "enabled") (not .Values.metricReporter.enabled) }}
+  {{- fail "metricReporter.enabled has been removed; remove the key from your values." }}
+  {{- end }}
   {{- $ingestTrustedEndpoint := printf "http://%s:%v" (include "zymtrace.resourceName" (list $ "ingest")) .Values.services.ingest.portTrusted }}
   {{- range $prefix := list "INGEST" "IDENTITY" "WEB" "SYMDB" }}
-  {{ $prefix }}__METRIC_REPORTER__ENABLED: {{ $.Values.metricReporter.enabled | quote }}
+  {{ $prefix }}__METRIC_REPORTER__ENABLED: "true"
   {{ $prefix }}__METRIC_REPORTER__ENDPOINT: {{ $ingestTrustedEndpoint | quote }}
   {{ $prefix }}__METRIC_REPORTER__POLL_PERIOD_SEC: {{ $.Values.metricReporter.pollPeriodSec | quote }}
   {{ $prefix }}__METRIC_REPORTER__EXPORT_PERIOD_SEC: {{ $.Values.metricReporter.exportPeriodSec | quote }}

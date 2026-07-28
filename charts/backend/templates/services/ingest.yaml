@@ -17,6 +17,10 @@ spec:
       app: {{ include "zymtrace.resourceName" (list $ "ingest") }}
   template:
     metadata:
+      {{- with .Values.services.ingest.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "ingest") }}
     spec:

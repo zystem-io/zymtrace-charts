@@ -1,0 +1,31 @@
+{{- /*
+PodMonitors for the prometheus-operator (kube-prometheus-stack et al.).
+The backend services expose Prometheus metrics at GET /metrics on their
+health-check listener (web: on its REST listener); one PodMonitor per
+service scrapes it. Requires the monitoring.coreos.com/v1 CRDs.
+*/}}
+{{- if .Values.metricReporter.podMonitor.enabled }}
+{{- range $svc := list "identity" "ingest" "symdb" "web" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ $svc) }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" $ | nindent 4 }}
+    {{- with $.Values.metricReporter.podMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ $svc) }}
+  podMetricsEndpoints:
+    - port: {{ eq $svc "web" | ternary "http" "http-health" }}
+      path: /metrics
+      {{- with $.Values.metricReporter.podMonitor.interval }}
+      interval: {{ . }}
+      {{- end }}
+---
+{{- end }}
+{{- end }}

@@ -17,6 +17,10 @@ spec:
       app: {{ include "zymtrace.resourceName" (list $ "web") }}
   template:
     metadata:
+      {{- with .Values.services.web.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "web") }}
     spec:
