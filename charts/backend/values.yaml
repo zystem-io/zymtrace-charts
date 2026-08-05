@@ -853,6 +853,18 @@ services:
       nodePort: ""
       annotations: {}
       labels: {}
+      # Name of the main gateway Service port (port 80 below). Traffic on this
+      # port is actually gRPC (see the nginx ingress "backend-protocol: GRPC"
+      # annotation). Istio's sidecar picks the L7 protocol from this name
+      # (http, http2, grpc, grpc-web, tcp, ...); with "http" it treats gRPC
+      # traffic as HTTP/1.1 and breaks it. Set this to "grpc" when the
+      # gateway runs in an Istio-injected namespace.
+      portName: http
+    # Extra annotations for the gateway pods, e.g. sidecar.istio.io/inject,
+    # traffic.sidecar.istio.io/excludeInboundPorts, prometheus.io scrape hints.
+    podAnnotations: {}
+    # Extra labels for the gateway pods.
+    podLabels: {}
     port: 80
     portTrusted: 9900
     adminPort: 9901

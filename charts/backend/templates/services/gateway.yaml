@@ -18,8 +18,15 @@ spec:
       app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
   template:
     metadata:
+      {{- with .Values.services.gateway.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
         app: {{ include "zymtrace.resourceName" (list $ "gateway") }}
+        {{- with .Values.services.gateway.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- include "zymtrace.nodeSelector" (list $ "gateway") | nindent 6 }}
       {{- include "zymtrace.tolerations" (list $ "gateway") | nindent 6 }}
@@ -101,7 +108,7 @@ spec:
     - port: {{ .Values.services.gateway.port }}
       targetPort: http
       protocol: TCP
-      name: http
+      name: {{ .Values.services.gateway.service.portName | default "http" }}
       {{- if and (eq .Values.services.gateway.service.type "NodePort") .Values.services.gateway.service.nodePort }}
       nodePort: {{ .Values.services.gateway.service.nodePort }}
       {{- end }}
