@@ -153,3 +153,37 @@ Uses env var instead of -cluster-name flag for backward compatibility with older
   value: {{ $metadata.cluster_id | quote }}
 {{- end }}
 {{- end -}}
+
+{{/*
+Whether the chart should render its own auth-token Secret
+(only when a plain value is given and no existingSecret is referenced)
+*/}}
+{{- define "zymtrace.profiler.useOwnAuthTokenSecret" -}}
+{{- $authToken := .Values.profiler.authToken -}}
+{{- if and $authToken $authToken.value (not (and $authToken.existingSecret $authToken.existingSecret.name)) }}
+true
+{{- end }}
+{{- end -}}
+
+{{/*
+ZYMTRACE_AUTH_TOKEN environment variable, sourced from a Secret
+(either an existingSecret or the one this chart creates)
+*/}}
+{{- define "zymtrace.profiler.authTokenEnv" -}}
+{{- $authToken := .Values.profiler.authToken -}}
+{{- if $authToken }}
+{{- if and $authToken.existingSecret $authToken.existingSecret.name }}
+- name: ZYMTRACE_AUTH_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ $authToken.existingSecret.name }}
+      key: {{ $authToken.existingSecret.key | default "auth-token" }}
+{{- else if include "zymtrace.profiler.useOwnAuthTokenSecret" . }}
+- name: ZYMTRACE_AUTH_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "zymtrace.resourceName" (list . "profiler-auth-token") }}
+      key: auth-token
+{{- end }}
+{{- end }}
+{{- end -}}

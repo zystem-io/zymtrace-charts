@@ -36,6 +36,7 @@ spec:
           env:
             {{- include "zymtrace.profiler.env" .Values.profiler | nindent 12 }}
             {{- include "zymtrace.profiler.clusterEnv" . | nindent 12 }}
+            {{- include "zymtrace.profiler.authTokenEnv" . | nindent 12 }}
           args:
             {{- include "zymtrace.profiler.args" . | nindent 12 }}
           volumeMounts:

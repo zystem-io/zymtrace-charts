@@ -47,11 +47,13 @@ profiler:
     - "-disable-tls"
     # - "-project=project-name" 
     # - "-zymtrace-protocol"
-    # - "-tags=cloud_region:us-central1;env:staging"  
+    # - "-tags=cloud_region:us-central1;env:staging"
     # - "-v"
     # - "-dwarf"
     # - "-zymtrace-protocol"
-    # - "-auth-token=mycustomauthtoken"
+    # - "-auth-token=mycustomauthtoken" # Not recommended: puts the token in plain text in the pod spec.
+    #                                   # Prefer profiler.authToken below, which sources ZYMTRACE_AUTH_TOKEN
+    #                                   # from a Kubernetes Secret instead.
     #
     # GPU Metrics: https://docs.zymtrace.com/gpu-metrics#available-gpu-metrics
     # To enable GPU metrics, add:
@@ -61,6 +63,20 @@ profiler:
     #                               # Not recommended for production: if lib isn't at standard path,
     #                               # it's best to just run with that flag once, then specify the
     #                               # path found and printed by the profiler explicitly in future runs.
+  # Auth token for the collection agent, exposed to the profiler as ZYMTRACE_AUTH_TOKEN.
+  # Sourced from a Kubernetes Secret rather than plain text in values/args.
+  authToken:
+    # Plain text token. If set and existingSecret.name is empty, the chart creates a Secret
+    # to hold it (still keeps the token out of the pod spec/env plain text).
+    # Override with: --set profiler.authToken.value=<token>
+    value: ""
+    existingSecret:
+      # Name of a pre-existing Secret containing the auth token. Takes precedence over
+      # profiler.authToken.value when set.
+      name: ""
+      # Key within that Secret whose value is the auth token.
+      key: "auth-token"
+
   # Note: CLI args take precedence over environment variables
   env:
     # For all env variables, see: https://docs.zymtrace.com/profiler-env-variables
