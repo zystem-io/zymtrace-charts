@@ -233,6 +233,24 @@ data:
 
   # Web service configuration
   WEB__ALLOW_RECOMMENDATIONS: {{ .Values.services.web.allowRecommendations | default true | quote }}
+  {{- $mcpHosts := .Values.services.web.mcpAllowedHosts | default "all" }}
+  {{- if kindIs "string" $mcpHosts }}
+  {{- if eq (lower $mcpHosts) "all" }}
+  # Empty value: the web service disables the Host check entirely.
+  WEB__REST__MCP_ALLOWED_HOSTS: ""
+  {{- else if eq (lower $mcpHosts) "ingress" }}
+  {{- if not .Values.ingress.hosts.gateway.host }}
+  {{- fail "services.web.mcpAllowedHosts=ingress requires ingress.hosts.gateway.host" }}
+  {{- end }}
+  WEB__REST__MCP_ALLOWED_HOSTS: {{ .Values.ingress.hosts.gateway.host | quote }}
+  {{- else }}
+  {{- fail "services.web.mcpAllowedHosts must be \"all\", \"ingress\", or a list of hosts" }}
+  {{- end }}
+  {{- else if kindIs "slice" $mcpHosts }}
+  WEB__REST__MCP_ALLOWED_HOSTS: {{ join ";" $mcpHosts | quote }}
+  {{- else }}
+  {{- fail "services.web.mcpAllowedHosts must be \"all\", \"ingress\", or a list of hosts" }}
+  {{- end }}
 
   # UI configuration
   WEB_SERVICE: "http://{{ include "zymtrace.resourceName" (list $ "web") }}:{{ .Values.services.web.port }}"

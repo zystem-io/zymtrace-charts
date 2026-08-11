@@ -673,6 +673,12 @@ services:
       #   value: "web"
       #   effect: "NoSchedule"
     allowRecommendations: true
+    # Host header values accepted by the /mcp endpoint:
+    # - "all": disable the check (default).
+    # - "ingress": accept ingress.hosts.gateway.host.
+    # - [host1, host2]: accept these hosts.
+    # localhost is always accepted by the web service itself.
+    mcpAllowedHosts: all
     env: {}
       # RUST_LOG: "info"
     affinity: {}
