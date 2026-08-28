@@ -1,0 +1,105 @@
+{{- if .Values.services.worker.enabled | default false }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "worker") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    app: {{ include "zymtrace.resourceName" (list $ "worker") }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-depends-on": "{{ include "zymtrace.resourceName" (list $ "migrate") }}"
+spec:
+  replicas: {{ .Values.services.worker.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "zymtrace.resourceName" (list $ "worker") }}
+  template:
+    metadata:
+      {{- with .Values.services.worker.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "zymtrace.resourceName" (list $ "worker") }}
+    spec:
+      {{- include "zymtrace.nodeSelector" (list $ "worker") | nindent 6 }}
+      {{- include "zymtrace.tolerations" (list $ "worker") | nindent 6 }}
+      {{- include "zymtrace.affinity" (list $ "worker") | nindent 6 }}
+      {{- include "zymtrace.imagePullSecrets" . | nindent 6 }}
+      {{- if eq .Values.postgres.mode "aws_aurora" }}
+      serviceAccountName: {{ .Values.postgres.aws_aurora.serviceAccount }}
+      {{- else if and (eq .Values.storage.use_existing.type "s3") .Values.storage.use_existing.s3.serviceAccount }}
+      serviceAccountName: {{ .Values.storage.use_existing.s3.serviceAccount }}
+      {{- end }}
+      containers:
+        - name: {{ include "zymtrace.resourceName" (list $ "worker") }}
+          image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "worker") }}:{{ include "zymtrace.serviceTag" (list $ "worker") }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["zymtrace-worker"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.services.worker.port }}
+              protocol: TCP
+            - name: http-health
+              containerPort: {{ .Values.services.worker.portHealth }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.services.worker.resources | nindent 12 }}
+
+          {{- include "zymtrace.serviceEnvConfig" (list $ "worker") | nindent 10 }}
+
+          {{- if include "zymtrace.livenessProbeEnabled" (list $ "worker") }}
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: {{ .Values.services.worker.portHealth }}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- end }}
+          {{- if include "zymtrace.readinessProbeEnabled" (list $ "worker") }}
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: {{ .Values.services.worker.portHealth }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "worker") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+    {{- with .Values.services.worker.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.services.worker.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  clusterIP: None # headless -- exposes all downstream IPs to envoy
+  ports:
+    - port: {{ .Values.services.worker.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.services.worker.portHealth }}
+      targetPort: http-health
+      protocol: TCP
+      name: http-health
+  selector:
+    app: {{ include "zymtrace.resourceName" (list $ "worker") }}
+---
+{{- include "zymtrace.hpa" (list $ "worker" .Values.services.worker) }}
+{{- end }}

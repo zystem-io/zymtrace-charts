@@ -1,0 +1,31 @@
+{{- $retention := required "clickhouse.retention is required" .Values.clickhouse.retention -}}
+{{- $sections := list "common" "recommendations" -}}
+{{- range $key, $_ := $retention }}
+{{- if and (not (has $key $sections)) (ne $key "apply") }}
+{{- fail (printf "clickhouse.retention.%s: unknown key (expected one of: apply, %s)" $key (join ", " $sections)) }}
+{{- end }}
+{{- end }}
+{{- with $retention.apply }}
+{{- if not (has . (list "sync" "async")) }}
+{{- fail (printf "clickhouse.retention.apply: %v: expected sync or async" .) }}
+{{- end }}
+{{- end }}
+{{- range $sections }}
+{{- $section := get $retention . }}
+{{- if not (kindIs "map" $section) }}
+{{- fail (printf "clickhouse.retention.%s is required and must be a map" .) }}
+{{- end }}
+{{- if not (hasKey $section "delete") }}
+{{- fail (printf "clickhouse.retention.%s.delete is required: { after-hours: <N> } or disabled" .) }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zymtrace.resourceName" (list $ "retention") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zymtrace.labels" . | nindent 4 }}
+data:
+  retention.yml: |-
+{{ toYaml $retention | indent 4 }}

@@ -16,7 +16,6 @@ global:
     username: "" # Required: provide via --set
     password: "" # Required: provide via --set
   imagePullPolicy: IfNotPresent
-  dataRetentionDays: 30  # Default retention period in days. 0 = forever.
   migrateServicesToHeadless: true # Auto-detects and migrates services from ClusterIP to headless. Set to false to disable.
   skipCapabilityCheck: false  # Set to true to skip API capability checks (useful for helm template operations)
   skipDBMigrations: false  # Set to true to skip running database migrations during install/upgrade (useful for quick rollbacks or when migrations are not needed)
@@ -250,6 +249,25 @@ globalSymbolization:
 #
 clickhouse:
   mode: "create"  # "create" or "use_existing"
+  # ClickHouse data retention, applied by the migration job on every install and upgrade.
+  # `common` covers profiling data; `recommendations` covers generated recommendations.
+  # Per-section keys (kebab-case, validated by the migration job):
+  #   delete: { after-hours: <N> } | disabled   # when rows are deleted
+  #   policy: <name> # optional ClickHouse storage policy
+  #   tiers: # optional steps before deletion
+  #     - move: { after-hours: 24, to: { volume: cold } }
+  #     - recompress: { after-hours: 72, codec: { zstd: 7 } }
+  #   settings:
+  #     ttl-only-drop-parts: true
+  #     merge-with-ttl-timeout-sec: 14400
+  retention:
+    # sync waits for retention ALTERs and fails on CH timeout
+    # set to async when you are retroactively applying cold storage
+    apply: sync
+    common:
+      delete: disabled
+    recommendations:
+      delete: disabled
   nodeSelector: {}
   tolerations: []
   # - key: "key"
@@ -807,6 +825,48 @@ services:
       # - key: "workload"
       #   operator: "Equal"
       #   value: "identity"
+      #   effect: "NoSchedule"
+    env: {}
+      # RUST_LOG: "info"
+    affinity: {}
+      # Individual service affinity takes precedence over common affinity
+
+  worker:
+    enabled: false
+    image:
+      repository: zymtrace-backend
+      tag: ""
+    port: 7107
+    portHealth: 7109
+    replicas: 1
+    service:
+      annotations: {}
+      labels: {}
+    podAnnotations: {} # Extra annotations for the worker pods, e.g. prometheus.io scrape hints.
+    # Use common HPA settings unless you need service-specific values
+    #hpa:
+    #  enabled: false
+    #  minReplicas: 1
+    #  targetCPUUtilizationPercentage: 80
+    #  maxReplicas: 5
+    #  targetMemoryUtilizationPercentage: 80
+    # Health probe overrides - takes precedence over common healthProbes settings
+    #healthProbes:
+    #  liveness: true   # Override common setting for this service
+    #  readiness: true  # Override common setting for this service
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    nodeSelector: {}
+      # kubernetes.io/arch: amd64
+    tolerations: []
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "worker"
       #   effect: "NoSchedule"
     env: {}
       # RUST_LOG: "info"

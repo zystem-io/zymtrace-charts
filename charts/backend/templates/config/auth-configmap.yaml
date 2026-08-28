@@ -104,11 +104,20 @@ WORKAROUND (two-phase deployment):
   Build effective issuers and audiences
     - If user sets auth.validation.issuers/audiences -> use them as-is
     - Otherwise:
-      - issuers  => [ $detectedIssuer ]
+      - issuers  => [ $detectedIssuer ], falling back to the identity service's
+        default token issuer when no ingress host is configured. The issuer keys
+        must always be set to a valid, non-empty URL: the web service requires
+        the issuers field whenever any validation key (e.g. the public key) is
+        set, and issuer validation is a plain string match against the token's
+        issuer claim, so both services just need to agree on the same value.
       - audiences => [ "zymtrace" ]
   Also, ensure that "zymtrace" audience is included, because it's hardcoded in helm for now.
   */}}
-  {{ $effectiveIssuers := default (list $detectedIssuer) .Values.auth.validation.issuers -}}
+  {{ $claimsIssuer := default "http://127.0.0.1:9933" $detectedIssuer -}}
+  {{ $effectiveIssuers := compact (default (list) .Values.auth.validation.issuers) -}}
+  {{ if not $effectiveIssuers -}}
+    {{ $effectiveIssuers = list $claimsIssuer -}}
+  {{ end -}}
   {{ $effectiveAudiences := default (list "zymtrace") .Values.auth.validation.audiences -}}
   {{ $effectiveAudiences = uniq (append $effectiveAudiences "zymtrace") }}
   WEB__AUTH__KIND: {{ .Values.auth.type | lower }}
@@ -119,7 +128,7 @@ WORKAROUND (two-phase deployment):
   Ingest service will be issuing tokens with audience "zymtrace"
   */}}
   IDENTITY__AUTH__TOKEN__CLAIMS__AUDIENCE: "zymtrace"
-  IDENTITY__AUTH__TOKEN__CLAIMS__ISSUER: {{ $detectedIssuer | quote }}
+  IDENTITY__AUTH__TOKEN__CLAIMS__ISSUER: {{ $claimsIssuer | quote }}
 
   {{- $keys := .Values.auth.validation.keys }}
 

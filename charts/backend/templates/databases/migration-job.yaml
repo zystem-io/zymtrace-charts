@@ -99,6 +99,10 @@ spec:
         - name: migrate
           image: "{{ include "zymtrace.imageRegistry" . }}{{ include "zymtrace.repositoryName" (list $ "migrate") }}:{{ include "zymtrace.serviceTag" (list . "migrate") }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          volumeMounts:
+            - name: retention
+              mountPath: /etc/zymtrace/retention
+              readOnly: true
           command:
             - /bin/sh
             - -c
@@ -107,7 +111,7 @@ spec:
               echo "Running database migrations..."
               
               # All configuration is pulled from the existing environment variables.
-              zymtrace-cli migrate
+              zymtrace-cli migrate {{- if .Values.services.worker.enabled | default false }} --enable-worker {{- end }}
 
               MIGRATE_STATUS=$?
               
@@ -132,5 +136,9 @@ spec:
               value: "true"
           {{- end }}
           {{- end }}
+      volumes:
+        - name: retention
+          configMap:
+            name: {{ include "zymtrace.resourceName" (list $ "retention") }}
       restartPolicy: OnFailure
 {{- end }}

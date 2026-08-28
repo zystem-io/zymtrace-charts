@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.8.4](https://img.shields.io/badge/Chart-26.8.4-blue) ![App: 26.8.4](https://img.shields.io/badge/App-26.8.4-yellow)
+![Chart: 26.8.5](https://img.shields.io/badge/Chart-26.8.5-blue) ![App: 26.8.5](https://img.shields.io/badge/App-26.8.5-yellow)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -272,7 +272,6 @@ services:
 | global.registry.username | string | Registry username |
 | global.registry.password | string | Registry password |
 | global.imagePullPolicy | string | Image pull policy |
-| global.dataRetentionDays | int | Data retention period in days (0 = forever) |
 | global.migrateServicesToHeadless | bool | Use pre-upgrade hooks for service migration |
 | global.skipCapabilityCheck | bool | Skip API capability checks |
 | global.skipDBMigrations | bool | Skip running database migrations |
@@ -341,6 +340,10 @@ For detailed AI Assistant configuration, see the [AI Assistant documentation](ht
 | clickhouse.nodeSelector | object | Node selector for ClickHouse |
 | clickhouse.tolerations | list | Tolerations for ClickHouse |
 | clickhouse.affinity | object | Affinity rules for ClickHouse |
+| clickhouse.retention | object | ClickHouse data retention applied by the migration job; see values.yaml for the schema |
+| clickhouse.retention.apply | string | How retention `ALTER`s run: `sync` (default) waits and fails past `distributed_ddl_task_timeout`; `async` submits without waiting |
+| clickhouse.retention.common.delete | object | Deletion rule for profiling data: `{ after-hours: N }` or `disabled` |
+| clickhouse.retention.recommendations.delete | object | Deletion rule for recommendations: `{ after-hours: N }` or `disabled` |
 | clickhouse.create.image.repository | string | ClickHouse image repository |
 | clickhouse.create.image.tag | string | ClickHouse image tag |
 | clickhouse.create.config.user | string | ClickHouse username |

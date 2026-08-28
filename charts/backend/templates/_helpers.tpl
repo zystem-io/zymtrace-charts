@@ -193,6 +193,11 @@ Used when licenseKeySecretName or privateKey/publicKeySecretName are set.
     secretKeyRef:
       name: {{ $pgSecret }}
       key: {{ $pgKey }}
+- name: WORKER__POSTGRES__PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $pgSecret }}
+      key: {{ $pgKey }}
 {{- end }}
 {{- if eq $root.Values.storage.mode "use_existing" }}
 {{- $st := $root.Values.storage.use_existing }}
@@ -298,7 +303,7 @@ envFrom:
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "ai-assistant-secrets") }}
 {{- end }}
-{{- if or (eq $service "identity") (eq $service "symdb") (eq $service "web") }}
+{{- if or (eq $service "identity") (eq $service "symdb") (eq $service "web") (eq $service "worker") }}
   - secretRef:
       name: {{ include "zymtrace.resourceName" (list $root "postgres-secrets") }}
 {{- end }}

@@ -5,7 +5,7 @@ health-check listener (web: on its REST listener); one PodMonitor per
 service scrapes it. Requires the monitoring.coreos.com/v1 CRDs.
 */}}
 {{- if .Values.metricReporter.podMonitor.enabled }}
-{{- range $svc := list "identity" "ingest" "symdb" "web" }}
+{{- range $svc := (.Values.services.worker.enabled | default false) | ternary (list "identity" "ingest" "symdb" "web" "worker") (list "identity" "ingest" "symdb" "web") }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
