@@ -286,7 +286,7 @@ clickhouse:
   create:
     image:
       repository: clickhouse/clickhouse-server
-      tag: "25.3.2.39"
+      tag: "25.3.14.14"
     config:
       user: "clickhouse"
       password: "clickhouse123"
