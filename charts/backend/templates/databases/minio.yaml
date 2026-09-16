@@ -46,7 +46,7 @@ spec:
           livenessProbe:
             exec:
               command:
-                - mc
+                - mcli
                 - ready
                 - local
             initialDelaySeconds: {{ .Values.storage.create.healthProbes.liveness.initialDelaySeconds }}
@@ -55,7 +55,7 @@ spec:
           readinessProbe:
             exec:
               command:
-                - mc
+                - mcli
                 - ready
                 - local
             initialDelaySeconds: {{ .Values.storage.create.healthProbes.readiness.initialDelaySeconds }}
@@ -117,7 +117,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              until mc alias set myminio http://{{ include "zymtrace.resourceName" (list $ "minio") }}:{{ .Values.storage.create.service.api.port }} "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"; do
+              until mcli alias set myminio http://{{ include "zymtrace.resourceName" (list $ "minio") }}:{{ .Values.storage.create.service.api.port }} "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"; do
                 echo "Waiting for MinIO to be ready..."
                 sleep 5
               done
@@ -130,9 +130,9 @@ spec:
             - /bin/sh
             - -c
             - |
-              mc alias set myminio http://{{ include "zymtrace.resourceName" (list $ "minio") }}:{{ .Values.storage.create.service.api.port }} "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+              mcli alias set myminio http://{{ include "zymtrace.resourceName" (list $ "minio") }}:{{ .Values.storage.create.service.api.port }} "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
               echo "Creating the symbols buckets..."
-              mc mb myminio/{{ .Values.storage.buckets.symbols }} || echo "Bucket {{ .Values.storage.buckets.symbols }} already exists"
+              mcli mb myminio/{{ .Values.storage.buckets.symbols }} || echo "Bucket {{ .Values.storage.buckets.symbols }} already exists"
               echo "Bucket initialization completed"
           {{- include "zymtrace.minioEnvConfig" . | nindent 10 }}
       restartPolicy: OnFailure

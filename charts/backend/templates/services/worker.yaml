@@ -89,6 +89,10 @@ metadata:
 spec:
   type: ClusterIP
   clusterIP: None # headless -- exposes all downstream IPs to envoy
+  # web and ingest block readiness on reaching the worker, and the worker blocks
+  # readiness on reaching web. Without this, cold start with readiness probes enabled
+  # deadlocks: nobody is Ready, so nobody is resolvable. Break the cycle.
+  publishNotReadyAddresses: true
   ports:
     - port: {{ .Values.services.worker.port }}
       targetPort: http

@@ -468,8 +468,8 @@ storage:
     #         - storage
   create:
     image:
-      repository: minio/minio
-      tag: "RELEASE.2024-12-18T13-15-44Z"
+      repository: pgsty/silo
+      tag: "RELEASE.2026-09-03T13-18-01Z"
     config:
       user: "minio"
       password: "minio123"
@@ -659,6 +659,7 @@ services:
       repository: zymtrace-backend
       tag: ""
     port: 9933
+    portTrusted: 9934
     replicas: 1
     service:
       annotations: {}
@@ -690,7 +691,6 @@ services:
       #   operator: "Equal"
       #   value: "web"
       #   effect: "NoSchedule"
-    allowRecommendations: true
     # Host header values accepted by the /mcp endpoint:
     # - "all": disable the check (default).
     # - "ingress": accept ingress.hosts.gateway.host.
