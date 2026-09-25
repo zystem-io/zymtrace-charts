@@ -1,6 +1,6 @@
 # Zymtrace Profiler Chart
 
-![Chart: 26.9.2](https://img.shields.io/badge/Chart-26.9.2-blue) ![App: 26.9.2](https://img.shields.io/badge/App-26.9.2-yellow)
+![Chart: 26.9.3](https://img.shields.io/badge/Chart-26.9.3-blue) ![App: 26.9.3](https://img.shields.io/badge/App-26.9.3-yellow)
 
 Deploy zymtrace's profiler agent - a lightweight, low-overhead continuous profiler for CPU and GPU workloads.
 
