@@ -32,6 +32,8 @@ profiler:
   image:
     repository: zymtrace-pub-profiler
     tag: "" # Override with --set profiler.image.tag=<version>
+  updateStrategy:
+    maxUnavailable: 1 # Pods (or percentage, e.g. "25%") replaced at once during a rollout. Override with --set profiler.updateStrategy.maxUnavailable=<n>
   securityContext:
     capabilities:
       add:

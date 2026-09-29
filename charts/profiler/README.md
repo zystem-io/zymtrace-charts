@@ -1,6 +1,6 @@
 # Zymtrace Profiler Chart
 
-![Chart: 26.9.3](https://img.shields.io/badge/Chart-26.9.3-blue) ![App: 26.9.3](https://img.shields.io/badge/App-26.9.3-yellow)
+![Chart: 26.9.4](https://img.shields.io/badge/Chart-26.9.4-blue) ![App: 26.9.4](https://img.shields.io/badge/App-26.9.4-yellow)
 
 Deploy zymtrace's profiler agent - a lightweight, low-overhead continuous profiler for CPU and GPU workloads.
 
@@ -220,6 +220,7 @@ profiler:
 | serviceAccount.annotations | object | Annotations for the service account (e.g., for IAM roles) |
 | profiler.image.repository | string | Profiler image repository |
 | profiler.image.tag | string | Profiler image tag (override with `--set profiler.image.tag=<version>`) |
+| profiler.updateStrategy.maxUnavailable | int or string | Max pods (or percentage, e.g. `25%`) replaced at once during a DaemonSet rollout (default `1`) |
 | profiler.securityContext.capabilities.add | list | Required SYS permissions |
 | profiler.cudaProfiler.enabled | bool | Enable CUDA profiler (for GPU profiling) |
 | profiler.cudaProfiler.hostMountPath | string | Host path for CUDA profiler data |
