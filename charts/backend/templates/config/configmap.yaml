@@ -180,6 +180,13 @@ data:
 
   {{- end }}
 
+  # Postgres connection pool sizes (max connections per pod), for every postgres mode.
+  # The defaults mirror values.yaml for --reuse-values upgrades that lack these keys.
+  IDENTITY__POSTGRES__POOL_SIZE: {{ .Values.services.identity.postgresPoolSize | default 16 | int | quote }}
+  SYMDB__POSTGRES__POOL_SIZE: {{ .Values.services.symdb.postgresPoolSize | default 8 | int | quote }}
+  WEB__POSTGRES__POOL_SIZE: {{ .Values.services.web.postgresPoolSize | default 8 | int | quote }}
+  WORKER__POSTGRES__POOL_SIZE: {{ .Values.services.worker.postgresPoolSize | default 1 | int | quote }}
+
   # Metric reporter configuration (services report metrics to the ingest trusted endpoint).
   {{- if and (hasKey .Values.metricReporter "enabled") (not .Values.metricReporter.enabled) }}
   {{- fail "metricReporter.enabled has been removed; remove the key from your values." }}

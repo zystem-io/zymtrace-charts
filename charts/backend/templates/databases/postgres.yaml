@@ -25,6 +25,11 @@ spec:
         - name: {{ include "zymtrace.resourceName" (list $ "postgres") }}
           image: "{{ include "database.imageRegistry" . }}{{ .Values.postgres.create.image.repository }}:{{ .Values.postgres.create.image.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          {{- with .Values.postgres.create.config.maxConnections }}
+          args:
+            - "-c"
+            - "max_connections={{ . | int }}"
+          {{- end }}
           {{- include "zymtrace.resourceConfig" (list $ "postgres") | nindent 10 }}
           ports:
             - name: psql

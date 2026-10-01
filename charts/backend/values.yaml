@@ -369,6 +369,11 @@ postgres:
     config:
       user: "postgres"
       password: "postgres123"
+      # PostgreSQL max_connections; changing it restarts PostgreSQL.
+      # It must cover the Postgres pools of all service pods: the sum over identity, symdb, web
+      # and worker of replicas (hpa.maxReplicas with HPA) x services.<service>.postgresPoolSize,
+      # plus a few for migrations and admin sessions.
+      maxConnections: 100
     service:
       port: 5432
     replicas: 1
@@ -661,6 +666,7 @@ services:
     port: 9933
     portTrusted: 9934
     replicas: 1
+    postgresPoolSize: 8
     service:
       annotations: {}
       labels: {}
@@ -710,6 +716,7 @@ services:
     portTrusted: 6108
     portHealth: 6109
     replicas: 1
+    postgresPoolSize: 8
     service:
       annotations: {}
       labels: {}
@@ -796,6 +803,7 @@ services:
     port: 7829
     portHealth: 7831
     replicas: 1
+    postgresPoolSize: 16
     service:
       annotations: {}
       labels: {}
@@ -839,6 +847,7 @@ services:
     port: 7107
     portHealth: 7109
     replicas: 1
+    postgresPoolSize: 1
     service:
       annotations: {}
       labels: {}
