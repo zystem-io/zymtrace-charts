@@ -21,6 +21,7 @@ global:
   skipDBMigrations: false  # Set to true to skip running database migrations during install/upgrade (useful for quick rollbacks or when migrations are not needed)
   skipPostgresMigration: false  # Set to true to skip PostgreSQL migrations specifically (sets SKIP_PSQL_MIGRATE=true)
   skipClickHouseMigration: false  # Set to true to skip ClickHouse migrations specifically (sets SKIP_CH_MIGRATE=true)
+  skipClickHouseRetention: false  # Set to true to leave ClickHouse table TTLs untouched during migrations; clickhouse.retention is then ignored (sets INGEST__APPLY_RETENTION=false; needs zymtrace >= 26.10.1)
 
 # AI Assistant Configuration
 # Supports multiple AI providers: Anthropic Claude, Google Gemini, and OpenAI ChatGPT
@@ -260,6 +261,9 @@ clickhouse:
   #   settings:
   #     ttl-only-drop-parts: true
   #     merge-with-ttl-timeout-sec: 14400
+  #     # false: TTL changes apply only to new/merged parts instead of rewriting all existing
+  #     # parts right away; existing parts keep expiring on their old schedule (needs zymtrace >= 26.10.1)
+  #     materialize-ttl-after-modify: true
   retention:
     # sync waits for retention ALTERs and fails on CH timeout
     # set to async when you are retroactively applying cold storage

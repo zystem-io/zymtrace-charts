@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.10.0](https://img.shields.io/badge/Chart-26.10.0-blue) ![App: 26.10.0](https://img.shields.io/badge/App-26.10.0-yellow)
+![Chart: 26.10.1](https://img.shields.io/badge/Chart-26.10.1-blue) ![App: 26.10.1](https://img.shields.io/badge/App-26.10.1-yellow)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -277,6 +277,7 @@ services:
 | global.skipDBMigrations | bool | Skip running database migrations |
 | global.skipPostgresMigration | bool | Skip PostgreSQL migrations specifically |
 | global.skipClickHouseMigration | bool | Skip ClickHouse migrations specifically |
+| global.skipClickHouseRetention | bool | Leave ClickHouse table TTLs and retention settings untouched during migrations; `clickhouse.retention` is ignored. Needs zymtrace 26.10.1 or later; older images fail the migrate job |
 
 ### Authentication
 

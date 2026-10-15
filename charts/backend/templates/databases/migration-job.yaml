@@ -124,18 +124,7 @@ spec:
                 sleep 120
                 exit 1
               fi
-          {{- include "zymtrace.serviceEnvConfig" (list $ "migrate") | nindent 10 }}
-          {{- if or .Values.global.skipPostgresMigration .Values.global.skipClickHouseMigration }}
-          env:
-          {{- if .Values.global.skipPostgresMigration }}
-            - name: SKIP_PSQL_MIGRATE
-              value: "true"
-          {{- end }}
-          {{- if .Values.global.skipClickHouseMigration }}
-            - name: SKIP_CH_MIGRATE
-              value: "true"
-          {{- end }}
-          {{- end }}
+          {{- include "zymtrace.serviceEnvConfig" (list $ "migrate" (include "zymtrace.migrateEnvItems" $)) | nindent 10 }}
       volumes:
         - name: retention
           configMap:

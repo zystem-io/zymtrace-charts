@@ -282,11 +282,38 @@ Used when licenseKeySecretName or privateKey/publicKeySecretName are set.
 {{- end }}
 
 {{/*
-Service environment configuration with individual service environment variables
+Env list items for the migrate container's skip switches. Emits only the list
+items (no "env:" key); callers pass them to zymtrace.serviceEnvConfig so they
+share its single env: list. A second env: key on the same container would
+replace the first one and drop the secret-sourced variables.
+*/}}
+{{- define "zymtrace.migrateEnvItems" -}}
+{{- if .Values.global.skipPostgresMigration }}
+- name: SKIP_PSQL_MIGRATE
+  value: "true"
+{{- end }}
+{{- if .Values.global.skipClickHouseMigration }}
+- name: SKIP_CH_MIGRATE
+  value: "true"
+{{- end }}
+{{- if .Values.global.skipClickHouseRetention }}
+- name: INGEST__APPLY_RETENTION
+  value: "false"
+{{- end }}
+{{- end }}
+
+{{/*
+Service environment configuration with individual service environment variables.
+An optional third argument holds extra env list items (no "env:" key) for the
+same env: list, e.g. (list $ "migrate" (include "zymtrace.migrateEnvItems" $)).
 */}}
 {{- define "zymtrace.serviceEnvConfig" -}}
 {{- $root := index . 0 -}}
 {{- $service := index . 1 -}}
+{{- $extraEnvItems := "" -}}
+{{- if gt (len .) 2 -}}
+{{- $extraEnvItems = index . 2 | trim -}}
+{{- end -}}
 {{- $serviceConfig := index $root.Values.services $service -}}
 envFrom:
   - configMapRef:
@@ -324,7 +351,7 @@ envFrom:
 {{- end }}
 {{- end }}
 {{- $externalEnvItems := include "zymtrace.externalSecretEnvItems" (list $root $service) | trim -}}
-{{- if or $serviceConfig.env $externalEnvItems }}
+{{- if or $serviceConfig.env $externalEnvItems $extraEnvItems }}
 env:
 {{- range $key, $value := $serviceConfig.env }}
   - name: {{ $key }}
@@ -332,6 +359,9 @@ env:
 {{- end }}
 {{- if $externalEnvItems }}
 {{ $externalEnvItems | indent 2 }}
+{{- end }}
+{{- if $extraEnvItems }}
+{{ $extraEnvItems | indent 2 }}
 {{- end }}
 {{- end }}
 {{- end }}
