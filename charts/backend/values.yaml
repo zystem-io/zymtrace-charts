@@ -670,7 +670,7 @@ services:
     port: 9933
     portTrusted: 9934
     replicas: 1
-    postgresPoolSize: 8
+    postgresPoolSize: 4
     service:
       annotations: {}
       labels: {}

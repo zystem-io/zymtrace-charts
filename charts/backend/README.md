@@ -1,5 +1,5 @@
 #  Zymtrace Backend Chart
-![Chart: 26.10.2](https://img.shields.io/badge/Chart-26.10.2-blue) ![App: 26.10.2](https://img.shields.io/badge/App-26.10.2-yellow)
+![Chart: 26.10.3](https://img.shields.io/badge/Chart-26.10.3-blue) ![App: 26.10.3](https://img.shields.io/badge/App-26.10.3-yellow)
 
 Deploy zymtrace's self-hosted backend services - a complete observability platform for CPU and GPU profiling.
 
@@ -481,7 +481,7 @@ Each service (`ingest`, `web`, `symdb`, `ui`, `identity`, `migrate`, `gateway`) 
 | services.&lt;service&gt;.hpa.enabled | bool | Enable HPA for this service |
 | services.&lt;service&gt;.hpa.minReplicas | int | Minimum replicas for HPA |
 | services.&lt;service&gt;.hpa.maxReplicas | int | Maximum replicas for HPA |
-| services.&lt;service&gt;.postgresPoolSize | int | Max PostgreSQL connections per pod (`identity`: 16, `symdb`: 8, `web`: 8, `worker`: 1) |
+| services.&lt;service&gt;.postgresPoolSize | int | Max PostgreSQL connections per pod (`identity`: 16, `symdb`: 8, `web`: 4, `worker`: 1) |
 
 ### Gateway Service
 
